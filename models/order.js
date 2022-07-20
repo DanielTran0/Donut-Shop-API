@@ -5,7 +5,8 @@ const orderSchema = new Schema({
 	name: { type: String, required: true },
 	email: { type: String, required: true },
 	phone: { type: String, required: true },
-	date: { type: Date, default: Date.now },
+	orderDate: { type: Date, default: Date.now },
+	pickUpDate: { type: Date, required: true },
 	accepted: { type: Boolean, default: false },
 	paid: { type: Boolean, default: false },
 	orderItems: [
