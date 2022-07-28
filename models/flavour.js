@@ -10,7 +10,6 @@ const flavourSchema = new Schema({
 
 flavourSchema.virtual('coreDetails').get(function getCoreDetails() {
 	return {
-		_id: this._id,
 		name: this.name,
 		description: this.description,
 		imageUrl: this.imageUrl,

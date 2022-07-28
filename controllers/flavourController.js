@@ -3,6 +3,15 @@ const multerUpload = require('../configs/multerConfig');
 const Flavour = require('../models/flavour');
 const cloudinaryUploadBuffer = require('../util/cloudinaryUploadBuffer');
 
+module.exports.getAllFlavours = async (req, res, next) => {
+	try {
+		const flavours = await Flavour.find().sort({ name: 'asc' });
+		res.json({ flavours });
+	} catch (error) {
+		next(error);
+	}
+};
+
 module.exports.postCreatedFlavour = [
 	multerUpload.single('image'),
 	body('name').trim().escape().notEmpty(),
