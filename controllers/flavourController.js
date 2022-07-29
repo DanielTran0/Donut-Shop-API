@@ -1,4 +1,5 @@
 const { body, validationResult } = require('express-validator');
+const cloudinary = require('cloudinary').v2;
 const multerUpload = require('../configs/multerConfig');
 const Flavour = require('../models/flavour');
 const cloudinaryUploadBuffer = require('../util/cloudinaryUploadBuffer');
@@ -41,7 +42,7 @@ module.exports.postCreatedFlavour = [
 					errors: [
 						{
 							location: 'body',
-							msg: 'flavour already exists.',
+							msg: 'flavour already exists',
 							param: 'name',
 							value: name,
 						},
@@ -56,10 +57,12 @@ module.exports.postCreatedFlavour = [
 				});
 			}
 
+			console.log(cloudinaryRes);
 			const newFlavour = new Flavour({
 				name,
 				description,
 				monthlySpecial,
+				imageId: cloudinaryRes?.public_id || '',
 				imageUrl: cloudinaryRes?.secure_url || '',
 			});
 			await newFlavour.save();
@@ -70,3 +73,31 @@ module.exports.postCreatedFlavour = [
 		}
 	},
 ];
+
+module.exports.deleteFlavour = async (req, res, next) => {
+	try {
+		const flavourExist = await Flavour.findById(req.params.flavourId);
+
+		if (!flavourExist) {
+			return res.status(400).json({
+				errors: [
+					{
+						msg: 'flavour does not exist',
+						params: 'flavourId',
+						value: req.params.flavourId,
+					},
+				],
+			});
+		}
+
+		const { imageId } = flavourExist;
+
+		if (imageId) await cloudinary.uploader.destroy(imageId);
+		await Flavour.findByIdAndDelete(req.params.flavourId);
+
+		const flavours = await Flavour.find().sort({ name: 'asc' });
+		return res.json({ flavours });
+	} catch (error) {
+		return next(error);
+	}
+};
