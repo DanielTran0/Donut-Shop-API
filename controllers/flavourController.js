@@ -53,11 +53,9 @@ module.exports.postCreatedFlavour = [
 				cloudinaryRes = await cloudinaryUploadBuffer({
 					req,
 					folderName: 'flavours',
-					fileName: name,
 				});
 			}
 
-			console.log(cloudinaryRes);
 			const newFlavour = new Flavour({
 				name,
 				description,
@@ -74,9 +72,73 @@ module.exports.postCreatedFlavour = [
 	},
 ];
 
+module.exports.putChangeFlavour = [
+	multerUpload.single('image'),
+	body('name').trim().escape().notEmpty(),
+	body('description').trim().escape(),
+	body('monthlySpecial')
+		.trim()
+		.escape()
+		.custom((value) => ['true', 'false'].includes(value))
+		.withMessage('true or false'),
+	async (req, res, next) => {
+		const formErrors = validationResult(req);
+		const { name, description, monthlySpecial } = req.body;
+		const { flavourId } = req.params;
+
+		if (!formErrors.isEmpty()) {
+			return res
+				.status(400)
+				.json({ info: req.body, errors: formErrors.array() });
+		}
+
+		try {
+			const flavourExist = await Flavour.findById(flavourId);
+			let cloudinaryRes = null;
+
+			if (!flavourExist) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							location: 'body',
+							msg: 'flavour does not exist',
+							param: 'name',
+							value: name,
+						},
+					],
+				});
+			}
+			const { imageId, imageUrl } = flavourExist;
+
+			if (req.file) {
+				cloudinaryRes = await cloudinaryUploadBuffer({
+					req,
+					folderName: 'flavours',
+				});
+
+				await cloudinary.uploader.destroy(flavourExist.imageId);
+			}
+
+			const flavourChange = await Flavour.findByIdAndUpdate(flavourId, {
+				name,
+				description,
+				imageId: cloudinaryRes?.public_id || imageId,
+				imageUrl: cloudinaryRes?.secure_url || imageUrl,
+				monthlySpecial,
+			});
+
+			return res.json({ ...flavourChange.coreDetails });
+		} catch (error) {
+			return next(error);
+		}
+	},
+];
+
 module.exports.deleteFlavour = async (req, res, next) => {
 	try {
-		const flavourExist = await Flavour.findById(req.params.flavourId);
+		const { flavourId } = req.params;
+		const flavourExist = await Flavour.findById(flavourId);
 
 		if (!flavourExist) {
 			return res.status(400).json({
@@ -84,7 +146,7 @@ module.exports.deleteFlavour = async (req, res, next) => {
 					{
 						msg: 'flavour does not exist',
 						params: 'flavourId',
-						value: req.params.flavourId,
+						value: flavourId,
 					},
 				],
 			});
@@ -93,7 +155,7 @@ module.exports.deleteFlavour = async (req, res, next) => {
 		const { imageId } = flavourExist;
 
 		if (imageId) await cloudinary.uploader.destroy(imageId);
-		await Flavour.findByIdAndDelete(req.params.flavourId);
+		await Flavour.findByIdAndDelete(flavourId);
 
 		const flavours = await Flavour.find().sort({ name: 'asc' });
 		return res.json({ flavours });
