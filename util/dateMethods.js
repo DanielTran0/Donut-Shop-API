@@ -1,4 +1,8 @@
-const { addDays, format } = require('date-fns');
+const { addDays, addWeeks, format } = require('date-fns');
+
+const formatDateToString = (date) => {
+	return format(date, 'yyyy/MM/dd');
+};
 
 module.exports.generateAllWeekendsInAYear = (year) => {
 	const weekends = [];
@@ -37,8 +41,22 @@ module.exports.generateAllWeekendsInAYear = (year) => {
 module.exports.generateOrderDates = (weekends, orderLimit = 20) => {
 	return weekends.map((day) => ({
 		date: day,
-		dateFormatted: format(day, 'yyyy/MM/dd'),
+		dateFormatted: formatDateToString(day),
 		remainingOrders: orderLimit,
 		dayOff: false,
 	}));
+};
+
+module.exports.generate3WeekDateRange = () => {
+	const currentDate = new Date();
+	let thirdSunday = addWeeks(currentDate, 2);
+
+	while (thirdSunday.getDay() !== 0) {
+		thirdSunday = addDays(thirdSunday, 1);
+	}
+
+	return {
+		startDate: formatDateToString(currentDate),
+		endDate: formatDateToString(thirdSunday),
+	};
 };

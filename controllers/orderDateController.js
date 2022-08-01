@@ -3,9 +3,29 @@ const OrderDate = require('../models/orderDate');
 const {
 	generateAllWeekendsInAYear,
 	generateOrderDates,
+	generate3WeekDateRange,
 } = require('../util/dateMethods');
 
-// module.exports.getAllDaysOff = async (req, res, next) => {};
+module.exports.getAllOrderDates = async (req, res, next) => {
+	try {
+		const orderDates = await OrderDate.find();
+		res.json({ orderDates });
+	} catch (error) {
+		next(error);
+	}
+};
+
+module.exports.get3WeeksOfOrderDates = async (req, res, next) => {
+	try {
+		const { startDate, endDate } = generate3WeekDateRange();
+		const orderDates = await OrderDate.find({
+			dateFormatted: { $gte: startDate, $lte: endDate },
+		});
+		res.json({ orderDates });
+	} catch (error) {
+		next(error);
+	}
+};
 
 module.exports.postAllWeekendOrderDaysInYear = [
 	body('year')
@@ -56,55 +76,6 @@ module.exports.postAllWeekendOrderDaysInYear = [
 		}
 	},
 ];
-
-// module.exports.postCreatedDaysOff = [
-// 	body('day').trim().isDate().withMessage('YYYY/MM/DD'),
-// 	async (req, res, next) => {
-// 		const formErrors = validationResult(req);
-// 		const { day } = req.body;
-
-// 		if (!formErrors.isEmpty()) {
-// 			return res
-// 				.status(400)
-// 				.json({ info: req.body, errors: formErrors.array() });
-// 		}
-// 		if (isBefore(date, Date.now())) {
-// 			return res.status(400).json({
-// 				info: req.body,
-// 				errors: [
-// 					{
-// 						location: 'body',
-// 						msg: 'pick a future day',
-// 						param: 'day',
-// 						value: day,
-// 					},
-// 				],
-// 			});
-// 		}
-// 		if (!isWeekend(date)) {
-// 			return res.status(400).json({
-// 				info: req.body,
-// 				errors: [
-// 					{
-// 						location: 'body',
-// 						msg: 'pick a weekend day',
-// 						param: 'day',
-// 						value: day,
-// 					},
-// 				],
-// 			});
-// 		}
-
-// 		next();
-// 		try {
-// 			// const dayOff = new DaysOff({ day });
-// 			// dayOff.save();
-// 			// return res.json({ msg: 'successful' });
-// 		} catch (error) {
-// 			return next(error);
-// 		}
-// 	},
-// ];
 
 // module.exports.putChangeDaysOff = [];
 
