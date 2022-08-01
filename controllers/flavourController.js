@@ -33,7 +33,7 @@ module.exports.postCreatedFlavour = [
 		}
 
 		try {
-			const flavourExist = await Flavour.findOne({ name });
+			const flavourExist = await Flavour.exists({ name });
 			let cloudinaryRes = null;
 
 			if (flavourExist) {
@@ -93,10 +93,10 @@ module.exports.putChangeFlavour = [
 		}
 
 		try {
-			const flavourExist = await Flavour.findById(flavourId);
+			const flavour = await Flavour.findById(flavourId);
 			let cloudinaryRes = null;
 
-			if (!flavourExist) {
+			if (!flavour) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -109,7 +109,7 @@ module.exports.putChangeFlavour = [
 					],
 				});
 			}
-			const { imageId, imageUrl } = flavourExist;
+			const { imageId, imageUrl } = flavour;
 
 			if (req.file) {
 				cloudinaryRes = await cloudinaryUploadBuffer({
@@ -117,7 +117,7 @@ module.exports.putChangeFlavour = [
 					folderName: 'flavours',
 				});
 
-				await cloudinary.uploader.destroy(flavourExist.imageId);
+				await cloudinary.uploader.destroy(imageId);
 			}
 
 			await Flavour.findByIdAndUpdate(flavourId, {
@@ -138,9 +138,9 @@ module.exports.putChangeFlavour = [
 module.exports.deleteFlavour = async (req, res, next) => {
 	try {
 		const { flavourId } = req.params;
-		const flavourExist = await Flavour.findById(flavourId);
+		const flavour = await Flavour.findById(flavourId);
 
-		if (!flavourExist) {
+		if (!flavour) {
 			return res.status(400).json({
 				errors: [
 					{
@@ -152,7 +152,7 @@ module.exports.deleteFlavour = async (req, res, next) => {
 			});
 		}
 
-		const { imageId } = flavourExist;
+		const { imageId } = flavour;
 
 		if (imageId) await cloudinary.uploader.destroy(imageId);
 		await Flavour.findByIdAndDelete(flavourId);

@@ -24,9 +24,8 @@ module.exports.postCreatedSaleItem = [
 				.status(400)
 				.json({ info: req.body, errors: formErrors.array() });
 		}
-
 		try {
-			const saleItemExist = await SaleItem.findOne({ name });
+			const saleItemExist = await SaleItem.exists({ name });
 
 			if (saleItemExist) {
 				return res.status(400).json({
@@ -74,9 +73,9 @@ module.exports.putChangeSaleItem = [
 		}
 
 		try {
-			const saleItemExist = await SaleItem.findById(saleItemId);
+			const saleItem = await SaleItem.findById(saleItemId);
 
-			if (!saleItemExist) {
+			if (!saleItem) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
