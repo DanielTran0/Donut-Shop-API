@@ -101,10 +101,9 @@ module.exports.putChangeFlavour = [
 					info: req.body,
 					errors: [
 						{
-							location: 'body',
 							msg: 'flavour does not exist',
-							param: 'name',
-							value: name,
+							param: 'flavourId',
+							value: flavourId,
 						},
 					],
 				});

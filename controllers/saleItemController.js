@@ -80,10 +80,9 @@ module.exports.putChangeSaleItem = [
 					info: req.body,
 					errors: [
 						{
-							location: 'body',
 							msg: 'sale item does not exist',
-							param: 'name',
-							value: name,
+							param: 'saleItemId',
+							value: saleItemId,
 						},
 					],
 				});
