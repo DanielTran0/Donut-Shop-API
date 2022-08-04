@@ -1,4 +1,5 @@
 const { body, validationResult } = require('express-validator');
+const { isValidObjectId } = require('mongoose');
 const SaleItem = require('../models/saleItem');
 
 module.exports.getAllSaleItems = async (req, res, next) => {
@@ -11,8 +12,12 @@ module.exports.getAllSaleItems = async (req, res, next) => {
 };
 
 module.exports.postCreatedSaleItem = [
-	body('name').trim().escape().notEmpty(),
-	body('description').trim().escape(),
+	body('name').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('description')
+		.trim()
+		.escape()
+		.optional({ checkFalsy: true })
+		.isAlphanumeric('en-US', { ignore: ' ' }),
 	body('price').trim().escape().isNumeric(),
 	body('quantity').trim().escape().isNumeric(),
 	async (req, res, next) => {
@@ -24,6 +29,7 @@ module.exports.postCreatedSaleItem = [
 				.status(400)
 				.json({ info: req.body, errors: formErrors.array() });
 		}
+
 		try {
 			const saleItemExist = await SaleItem.exists({ name });
 
@@ -57,8 +63,12 @@ module.exports.postCreatedSaleItem = [
 ];
 
 module.exports.putChangeSaleItem = [
-	body('name').trim().escape().notEmpty(),
-	body('description').trim().escape(),
+	body('name').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('description')
+		.trim()
+		.escape()
+		.optional({ checkFalsy: true })
+		.isAlphanumeric('en-US', { ignore: ' ' }),
 	body('price').trim().escape().isNumeric(),
 	body('quantity').trim().escape().isNumeric(),
 	async (req, res, next) => {
@@ -70,6 +80,18 @@ module.exports.putChangeSaleItem = [
 			return res
 				.status(400)
 				.json({ info: req.body, errors: formErrors.array() });
+		}
+		if (!isValidObjectId(saleItemId)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						msg: 'invalid sale id',
+						param: 'saleItemId',
+						value: saleItemId,
+					},
+				],
+			});
 		}
 
 		try {
@@ -105,6 +127,19 @@ module.exports.putChangeSaleItem = [
 module.exports.deleteSaleItem = async (req, res, next) => {
 	try {
 		const { saleItemId } = req.params;
+
+		if (!isValidObjectId(saleItemId)) {
+			return res.status(400).json({
+				errors: [
+					{
+						msg: 'invalid sale id',
+						param: 'saleItemId',
+						value: saleItemId,
+					},
+				],
+			});
+		}
+
 		const saleItemExist = await SaleItem.findById(saleItemId);
 
 		if (!saleItemExist) {

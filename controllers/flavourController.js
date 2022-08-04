@@ -1,5 +1,6 @@
 const { body, validationResult } = require('express-validator');
 const cloudinary = require('cloudinary').v2;
+const { isValidObjectId } = require('mongoose');
 const multerUpload = require('../configs/multerConfig');
 const Flavour = require('../models/flavour');
 const cloudinaryUploadBuffer = require('../util/cloudinaryUploadBuffer');
@@ -15,8 +16,12 @@ module.exports.getAllFlavours = async (req, res, next) => {
 
 module.exports.postCreatedFlavour = [
 	multerUpload.single('image'),
-	body('name').trim().escape().notEmpty(),
-	body('description').trim().escape(),
+	body('name').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('description')
+		.trim()
+		.escape()
+		.optional({ checkFalsy: true })
+		.isAlphanumeric('en-US', { ignore: ' ' }),
 	body('monthlySpecial')
 		.trim()
 		.escape()
@@ -74,8 +79,12 @@ module.exports.postCreatedFlavour = [
 
 module.exports.putChangeFlavour = [
 	multerUpload.single('image'),
-	body('name').trim().escape().notEmpty(),
-	body('description').trim().escape(),
+	body('name').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('description')
+		.trim()
+		.escape()
+		.optional({ checkFalsy: true })
+		.isAlphanumeric('en-US', { ignore: ' ' }),
 	body('monthlySpecial')
 		.trim()
 		.escape()
@@ -90,6 +99,18 @@ module.exports.putChangeFlavour = [
 			return res
 				.status(400)
 				.json({ info: req.body, errors: formErrors.array() });
+		}
+		if (!isValidObjectId(flavourId)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						msg: 'invalid flavour id',
+						param: 'flavourId',
+						value: flavourId,
+					},
+				],
+			});
 		}
 
 		try {
@@ -137,6 +158,19 @@ module.exports.putChangeFlavour = [
 module.exports.deleteFlavour = async (req, res, next) => {
 	try {
 		const { flavourId } = req.params;
+
+		if (!isValidObjectId(flavourId)) {
+			return res.status(400).json({
+				errors: [
+					{
+						msg: 'invalid flavour id',
+						param: 'flavourId',
+						value: flavourId,
+					},
+				],
+			});
+		}
+
 		const flavour = await Flavour.findById(flavourId);
 
 		if (!flavour) {

@@ -1,4 +1,5 @@
 const { body, validationResult } = require('express-validator');
+const { isValidObjectId } = require('mongoose');
 const OrderDate = require('../models/orderDate');
 const {
 	generateAllWeekendsInAYear,
@@ -10,7 +11,7 @@ module.exports.get3WeeksOfOpenOrderDates = async (req, res, next) => {
 	try {
 		const { startDate, endDate } = generate3WeekDateRange();
 		const orderDates = await OrderDate.find({
-			dateFormatted: { $gte: startDate, $lte: endDate },
+			date: { $gte: startDate, $lte: endDate },
 			dayOff: false,
 		});
 		res.json({ orderDates });
@@ -46,7 +47,7 @@ module.exports.postAllWeekendOrderDaysInYear = [
 
 		try {
 			const dateForYearExist = await OrderDate.exists({
-				dateFormatted: { $regex: year },
+				date: { $regex: year },
 			});
 
 			if (dateForYearExist) {
@@ -94,6 +95,18 @@ module.exports.putTurnOrderDateOff = [
 				.status(400)
 				.json({ info: req.body, errors: formErrors.array() });
 		}
+		if (!isValidObjectId(orderDateId)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						msg: 'invalid order date id',
+						param: 'orderDateId',
+						value: orderDateId,
+					},
+				],
+			});
+		}
 
 		try {
 			const orderDateExists = await OrderDate.findById(orderDateId);
@@ -132,6 +145,18 @@ module.exports.putChangeOrderLimit = [
 				.status(400)
 				.json({ info: req.body, errors: formErrors.array() });
 		}
+		if (!isValidObjectId(orderDateId)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						msg: 'invalid order date id',
+						param: 'orderDateId',
+						value: orderDateId,
+					},
+				],
+			});
+		}
 
 		try {
 			const orderDateExists = await OrderDate.findById(orderDateId);
@@ -160,6 +185,18 @@ module.exports.putChangeOrderLimit = [
 
 module.exports.deleteOrderDate = async (req, res, next) => {
 	const { orderDateId } = req.params;
+
+	if (!isValidObjectId(orderDateId)) {
+		return res.status(400).json({
+			errors: [
+				{
+					msg: 'invalid order date id',
+					param: 'orderDateId',
+					value: orderDateId,
+				},
+			],
+		});
+	}
 
 	try {
 		const orderDateExists = await OrderDate.findById(orderDateId);

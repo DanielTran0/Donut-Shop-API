@@ -1,10 +1,14 @@
-const { addDays, addWeeks, format } = require('date-fns');
+const { addDays, addWeeks, format, isAfter, isBefore } = require('date-fns');
 
 const formatDateToString = (date) => {
 	return format(date, 'yyyy/MM/dd');
 };
 
-module.exports.generateAllWeekendsInAYear = (year) => {
+const formatTimeToString = (date) => {
+	return format(date, 'hh:mm aaa');
+};
+
+const generateAllWeekendsInAYear = (year) => {
 	const weekends = [];
 	let date = new Date(year, 0, 1);
 
@@ -38,16 +42,16 @@ module.exports.generateAllWeekendsInAYear = (year) => {
 	return weekends;
 };
 
-module.exports.generateOrderDates = (weekends, orderLimit = 20) => {
+const generateOrderDates = (weekends, orderLimit = 20) => {
 	return weekends.map((day) => ({
-		date: day,
-		dateFormatted: formatDateToString(day),
+		date: formatDateToString(day),
 		remainingOrders: orderLimit,
 		dayOff: false,
+		orderIds: [],
 	}));
 };
 
-module.exports.generate3WeekDateRange = () => {
+const generate3WeekDateRange = () => {
 	const currentDate = new Date();
 	let thirdSunday = addWeeks(currentDate, 2);
 
@@ -59,4 +63,40 @@ module.exports.generate3WeekDateRange = () => {
 		startDate: formatDateToString(currentDate),
 		endDate: formatDateToString(thirdSunday),
 	};
+};
+
+const isOrderDateIn3WeekRange = (orderDate) => {
+	const { startDate, endDate } = generate3WeekDateRange();
+	const start = addDays(new Date(startDate), -1);
+	const end = addDays(new Date(endDate), 1);
+
+	if (isAfter(orderDate, start) && isBefore(orderDate, end)) return true;
+
+	return false;
+};
+
+const isOrderIsBeforeFridayDeadline = (date, orderDate) => {
+	let fridayDeadline = new Date(date);
+	fridayDeadline.setHours(18);
+	fridayDeadline.setMinutes(0);
+
+	while (fridayDeadline.getDay() !== 5) {
+		fridayDeadline = addDays(fridayDeadline, 1);
+	}
+
+	if (isAfter(fridayDeadline, orderDate) || isAfter(date, fridayDeadline)) {
+		return false;
+	}
+
+	return true;
+};
+
+module.exports = {
+	formatDateToString,
+	formatTimeToString,
+	generateAllWeekendsInAYear,
+	generateOrderDates,
+	generate3WeekDateRange,
+	isOrderDateIn3WeekRange,
+	isOrderIsBeforeFridayDeadline,
 };
