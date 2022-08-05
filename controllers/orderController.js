@@ -1,24 +1,36 @@
 const { body, validationResult } = require('express-validator');
 const Order = require('../models/order');
 const OrderDate = require('../models/orderDate');
+const SaleItem = require('../models/saleItem');
+const Flavour = require('../models/flavour');
 const {
 	formatDateToString,
 	formatTimeToString,
 	isOrderDateIn3WeekRange,
-	isOrderIsBeforeFridayDeadline,
+	isOrderBeforeFridayDeadline,
 } = require('../util/dateMethods');
+const {
+	doAllOrderItemNamesExist,
+	addSaleItemPriceAndQuantityToOrder,
+	validFlavourQuantity,
+	calculateAmountAndCostOfOrderItems,
+} = require('../util/orderValidationMethods');
 
 module.exports.postCreatedOrder = [
-	body('firstName').trim().escape().isAlphanumeric(),
-	body('lastName').trim().escape().isAlphanumeric(),
-	body('email').trim().escape().isEmail(),
+	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('lastName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('email').trim().escape().isEmail().normalizeEmail(),
 	body('phone').trim().escape().isMobilePhone('en-CA'),
-	body('note').trim().escape().optional({ checkFalsy: true }).isAlphanumeric(),
+	body('note')
+		.trim()
+		.escape()
+		.optional({ checkFalsy: true })
+		.isAlphanumeric('en-US', { ignore: ' ' }),
 	body('allergy')
 		.trim()
 		.escape()
 		.optional({ checkFalsy: true })
-		.isAlphanumeric(),
+		.isAlphanumeric('en-US', { ignore: ' ' }),
 	body('dateOrderPickUp')
 		.trim()
 		.custom((value) => /^\d{4}\/\d{2}\/\d{2}$/.test(value))
@@ -32,6 +44,7 @@ module.exports.postCreatedOrder = [
 			const hour = parseInt(value, 10);
 
 			if (Number.isNaN(hour) || hour < 12 || hour > 16) return false;
+
 			return true;
 		})
 		.withMessage('time has to be between 12 to 16'),
@@ -56,9 +69,35 @@ module.exports.postCreatedOrder = [
 			return true;
 		})
 		.withMessage('time has to be between 12 to 16'),
-	body('orderItems').trim().notEmpty(),
+	body('orderItems')
+		.trim()
+		.custom((value) => {
+			if (!value) return false;
+
+			const order = JSON.parse(value);
+
+			if (!Array.isArray(order)) return false;
+
+			for (let i = 0; i < order.length; i += 1) {
+				const { saleItem, flavours } = order[i];
+
+				if (!saleItem || !flavours) return false;
+				if (!saleItem.name || !saleItem.amount) return false;
+
+				for (let j = 0; j < flavours.length; j += 1) {
+					const flavour = flavours[j];
+					if (!flavour.name || !flavour.quantity) return false;
+				}
+			}
+
+			return true;
+		})
+		.withMessage(
+			'order items must have sale item object & flavours array both with name and quantity'
+		),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
+		const currentDate = new Date();
 		const {
 			firstName,
 			lastName,
@@ -69,8 +108,8 @@ module.exports.postCreatedOrder = [
 			dateOrderPickUp,
 			timeOrderPickUpHour,
 			timeOrderPickUpMinute,
-			orderItems,
 		} = req.body;
+		const orderItems = JSON.parse(req.body.orderItems);
 
 		if (!formErrors.isEmpty()) {
 			return res
@@ -80,6 +119,8 @@ module.exports.postCreatedOrder = [
 
 		try {
 			const orderDate = await OrderDate.findOne({ date: dateOrderPickUp });
+			const saleItems = await SaleItem.find({}, 'name quantity price');
+			const flavours = await Flavour.find({}, 'name');
 
 			if (!orderDate || orderDate?.dayOff) {
 				return res.status(400).json({
@@ -96,7 +137,7 @@ module.exports.postCreatedOrder = [
 					],
 				});
 			}
-			if (!isOrderDateIn3WeekRange(new Date(dateOrderPickUp))) {
+			if (!isOrderDateIn3WeekRange(dateOrderPickUp)) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -109,9 +150,7 @@ module.exports.postCreatedOrder = [
 					],
 				});
 			}
-			if (
-				!isOrderIsBeforeFridayDeadline(new Date(), new Date(dateOrderPickUp))
-			) {
+			if (!isOrderBeforeFridayDeadline(currentDate, dateOrderPickUp)) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -124,10 +163,57 @@ module.exports.postCreatedOrder = [
 					],
 				});
 			}
+			if (!doAllOrderItemNamesExist(orderItems, saleItems, flavours)) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							location: 'body',
+							msg: 'flavour(s) or sale item(s) do not exist',
+							param: 'orderItems',
+							value: orderItems,
+						},
+					],
+				});
+			}
 
-			const dateForTimeFormat = new Date();
-			dateForTimeFormat.setHours(timeOrderPickUpHour);
-			dateForTimeFormat.setMinutes(timeOrderPickUpMinute);
+			addSaleItemPriceAndQuantityToOrder(orderItems, saleItems);
+
+			if (!validFlavourQuantity(orderItems)) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							location: 'body',
+							msg: 'quantity of flavours do not match total quantity of sale items',
+							param: 'orderItems',
+							value: orderItems,
+						},
+					],
+				});
+			}
+
+			const { totalAmount, totalCost } =
+				calculateAmountAndCostOfOrderItems(orderItems);
+			const newRemainingOrders = orderDate.remainingOrders - totalAmount;
+
+			if (newRemainingOrders < 0) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							location: 'body',
+							msg: 'order amount exceeds daily order limit',
+							param: 'orderItems',
+							value: orderItems,
+						},
+					],
+				});
+			}
+
+			const pickUpDateTime = new Date(dateOrderPickUp);
+			pickUpDateTime.setHours(timeOrderPickUpHour);
+			pickUpDateTime.setMinutes(timeOrderPickUpMinute);
 
 			const newOrder = new Order({
 				firstName,
@@ -137,15 +223,20 @@ module.exports.postCreatedOrder = [
 				note,
 				allergy,
 				dateOrderPickUp,
-				dateOrderPlaced: formatDateToString(new Date()),
-				timeOrderPlaced: formatTimeToString(new Date()),
-				timeOrderPickUp: formatTimeToString(dateForTimeFormat),
+				timeOrderPickUp: formatTimeToString(pickUpDateTime),
+				dateOrderPlaced: formatDateToString(currentDate),
+				timeOrderPlaced: formatTimeToString(currentDate),
 				status: 'waiting for approval',
 				paid: false,
-				orderItems: JSON.parse(orderItems),
+				orderItems,
+				totalCost,
 			});
 
 			await newOrder.save();
+
+			orderDate.orderIds.push(newOrder._id);
+			orderDate.remainingOrders = newRemainingOrders;
+			await orderDate.save();
 
 			return res.json({ msg: 'successful' });
 		} catch (error) {

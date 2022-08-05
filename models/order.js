@@ -22,13 +22,13 @@ const orderSchema = new Schema({
 		],
 		default: 'waiting for approval',
 	},
-	paid: { type: Boolean, default: false },
 	orderItems: [
 		{
 			saleItem: {
 				name: { type: String, required: true },
 				price: { type: Number, required: true },
 				quantity: { type: Number, required: true },
+				amount: { type: Number, required: true },
 			},
 			flavours: [
 				{
@@ -38,6 +38,8 @@ const orderSchema = new Schema({
 			],
 		},
 	],
+	totalCost: { type: Number, required: true },
+	paid: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model('order', orderSchema);

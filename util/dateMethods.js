@@ -70,12 +70,13 @@ const isOrderDateIn3WeekRange = (orderDate) => {
 	const start = addDays(new Date(startDate), -1);
 	const end = addDays(new Date(endDate), 1);
 
-	if (isAfter(orderDate, start) && isBefore(orderDate, end)) return true;
+	if (isAfter(new Date(orderDate), start) && isBefore(new Date(orderDate), end))
+		return true;
 
 	return false;
 };
 
-const isOrderIsBeforeFridayDeadline = (date, orderDate) => {
+const isOrderBeforeFridayDeadline = (date, orderDate) => {
 	let fridayDeadline = new Date(date);
 	fridayDeadline.setHours(18);
 	fridayDeadline.setMinutes(0);
@@ -84,7 +85,10 @@ const isOrderIsBeforeFridayDeadline = (date, orderDate) => {
 		fridayDeadline = addDays(fridayDeadline, 1);
 	}
 
-	if (isAfter(fridayDeadline, orderDate) || isAfter(date, fridayDeadline)) {
+	if (
+		isAfter(fridayDeadline, new Date(orderDate)) ||
+		isAfter(new Date(date), fridayDeadline)
+	) {
 		return false;
 	}
 
@@ -98,5 +102,5 @@ module.exports = {
 	generateOrderDates,
 	generate3WeekDateRange,
 	isOrderDateIn3WeekRange,
-	isOrderIsBeforeFridayDeadline,
+	isOrderBeforeFridayDeadline,
 };
