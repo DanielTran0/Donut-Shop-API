@@ -10,10 +10,40 @@ const {
 module.exports.get3WeeksOfOpenOrderDates = async (req, res, next) => {
 	try {
 		const { startDate, endDate } = generate3WeekDateRange();
+		const orderDates = await OrderDate.find(
+			{
+				date: { $gte: startDate, $lte: endDate },
+				dayOff: false,
+			},
+			{ orders: false }
+		);
+		const removeRemainingOrdersIfOver3 = orderDates.map((orderDate) => {
+			const { _id, date, remainingOrders, dayOff } = orderDate;
+
+			return {
+				_id,
+				date,
+				dayOff,
+				remainingOrders: remainingOrders < 3 ? remainingOrders : null,
+			};
+		});
+
+		res.json({ orderDates: removeRemainingOrdersIfOver3 });
+	} catch (error) {
+		next(error);
+	}
+};
+
+module.exports.get3WeeksOfOpenOrderDatesPopulatedOrders = async (
+	req,
+	res,
+	next
+) => {
+	try {
+		const { startDate, endDate } = generate3WeekDateRange();
 		const orderDates = await OrderDate.find({
 			date: { $gte: startDate, $lte: endDate },
-			dayOff: false,
-		});
+		}).populate('orders');
 		res.json({ orderDates });
 	} catch (error) {
 		next(error);

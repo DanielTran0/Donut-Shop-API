@@ -9,14 +9,4 @@ const flavourSchema = new Schema({
 	monthlySpecial: { type: Boolean, default: false },
 });
 
-flavourSchema.virtual('coreDetails').get(function getCoreDetails() {
-	return {
-		name: this.name,
-		description: this.description,
-		imageId: this.imageId,
-		imageUrl: this.imageUrl,
-		monthlySpecial: this.monthlySpecial,
-	};
-});
-
 module.exports = mongoose.model('flavour', flavourSchema);

@@ -234,7 +234,7 @@ module.exports.postCreatedOrder = [
 
 			await newOrder.save();
 
-			orderDate.orderIds.push(newOrder._id);
+			orderDate.orders.push(newOrder._id);
 			orderDate.remainingOrders = newRemainingOrders;
 			await orderDate.save();
 

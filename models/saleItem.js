@@ -8,13 +8,4 @@ const saleItemSchema = new Schema({
 	quantity: { type: Number, required: true },
 });
 
-saleItemSchema.virtual('coreDetails').get(function getCoreDetails() {
-	return {
-		name: this.name,
-		description: this.description,
-		price: this.price,
-		quantity: this.quantity,
-	};
-});
-
 module.exports = mongoose.model('saleItem', saleItemSchema);

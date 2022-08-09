@@ -47,7 +47,7 @@ const generateOrderDates = (weekends, orderLimit = 20) => {
 		date: formatDateToString(day),
 		remainingOrders: orderLimit,
 		dayOff: false,
-		orderIds: [],
+		orders: [],
 	}));
 };
 

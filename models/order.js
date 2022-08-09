@@ -19,6 +19,7 @@ const orderSchema = new Schema({
 			'approved, waiting on payment',
 			'approved and paid',
 			'cancelled',
+			'completed',
 		],
 		default: 'waiting for approval',
 	},
