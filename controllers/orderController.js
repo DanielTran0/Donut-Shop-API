@@ -1,4 +1,5 @@
 const { body, validationResult } = require('express-validator');
+const { isValidObjectId } = require('mongoose');
 const Order = require('../models/order');
 const OrderDate = require('../models/orderDate');
 const SaleItem = require('../models/saleItem');
@@ -15,6 +16,42 @@ const {
 	validFlavourQuantity,
 	calculateAmountAndCostOfOrderItems,
 } = require('../util/orderValidationMethods');
+
+module.exports.getOrder = async (req, res, next) => {
+	const { orderId } = req.params;
+
+	if (!isValidObjectId(orderId)) {
+		return res.status(400).json({
+			errors: [
+				{
+					msg: 'invalid order id',
+					param: 'orderId',
+					value: orderId,
+				},
+			],
+		});
+	}
+
+	try {
+		const order = await Order.findById(orderId);
+
+		if (!order) {
+			return res.status(400).json({
+				errors: [
+					{
+						msg: 'order does not exist',
+						param: 'orderId',
+						value: orderId,
+					},
+				],
+			});
+		}
+
+		return res.json({ order });
+	} catch (error) {
+		return next(error);
+	}
+};
 
 module.exports.postCreatedOrder = [
 	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
