@@ -96,7 +96,6 @@ module.exports.postCreatedOrder = [
 
 			if (
 				Number.isNaN(min) ||
-				Number.isNaN(hour) ||
 				min < 0 ||
 				min > 60 ||
 				(hour === 16 && min !== 0)
