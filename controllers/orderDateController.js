@@ -28,7 +28,7 @@ module.exports.get3WeeksOfOpenOrderDates = async (req, res, next) => {
 			};
 		});
 
-		res.json({ orderDates: removeRemainingOrdersIfOver3 });
+		res.json({ orderDates: removeRemainingOrdersIfOver3, success: true });
 	} catch (error) {
 		next(error);
 	}
@@ -44,7 +44,7 @@ module.exports.get3WeeksOfOpenOrderDatesPopulatedOrders = async (
 		const orderDates = await OrderDate.find({
 			date: { $gte: startDate, $lte: endDate },
 		}).populate('orders');
-		res.json({ orderDates });
+		res.json({ orderDates, success: true });
 	} catch (error) {
 		next(error);
 	}
@@ -53,7 +53,7 @@ module.exports.get3WeeksOfOpenOrderDatesPopulatedOrders = async (
 module.exports.getAllOrderDates = async (req, res, next) => {
 	try {
 		const orderDates = await OrderDate.find();
-		res.json({ orderDates });
+		res.json({ orderDates, success: true });
 	} catch (error) {
 		next(error);
 	}
@@ -102,7 +102,7 @@ module.exports.postAllWeekendOrderDaysInYear = [
 				newOrderDate.save();
 			}
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
@@ -156,7 +156,7 @@ module.exports.putTurnOrderDateOff = [
 
 			await OrderDate.findByIdAndUpdate(orderDateId, { dayOff });
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
@@ -206,7 +206,7 @@ module.exports.putChangeOrderLimit = [
 
 			await OrderDate.findByIdAndUpdate(orderDateId, { remainingOrders });
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
@@ -246,7 +246,7 @@ module.exports.deleteOrderDate = async (req, res, next) => {
 
 		await OrderDate.findByIdAndDelete(orderDateId);
 
-		return res.json({ msg: 'successful' });
+		return res.json({ success: true });
 	} catch (error) {
 		return next(error);
 	}

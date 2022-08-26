@@ -2,6 +2,16 @@ const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcrypt');
 const { isValidObjectId } = require('mongoose');
 const User = require('../models/user');
+const jwtUtil = require('../util/jwtUtil');
+
+module.exports.getAllUsers = async (req, res, next) => {
+	try {
+		const users = await User.find().sort({ email: 'asc' });
+		res.json({ users, success: true });
+	} catch (error) {
+		next(error);
+	}
+};
 
 module.exports.postCreatedUser = [
 	body('email').trim().escape().isEmail().normalizeEmail(),
@@ -9,11 +19,11 @@ module.exports.postCreatedUser = [
 	body('lastName').trim().escape().isAlphanumeric(),
 	body('password')
 		.isLength({ min: 5 })
-		.withMessage('Minimum length is 5.')
+		.withMessage('Minimum length is 5')
 		.matches('[0-9]')
-		.withMessage('Must contain a number.')
+		.withMessage('Must contain a number')
 		.matches('[A-Z]')
-		.withMessage('Must contain a capital letter.'),
+		.withMessage('Must contain a capital letter'),
 	body('passwordConfirmation')
 		.custom((value, { req }) => value === req.body.password)
 		.withMessage('Must be identical to password'),
@@ -58,7 +68,66 @@ module.exports.postCreatedUser = [
 
 			await user.save();
 
-			return res.json({ msg: 'successful' });
+			const jwt = jwtUtil.issueJWT(user);
+
+			return res.json({ user, success: true, ...jwt });
+		} catch (error) {
+			return next(error);
+		}
+	},
+];
+
+module.exports.postUserLogin = [
+	body('email').trim().escape().isEmail().normalizeEmail(),
+	body('password')
+		.isLength({ min: 5 })
+		.withMessage('Minimum length is 5')
+		.matches('[0-9]')
+		.withMessage('Must contain a number')
+		.matches('[A-Z]')
+		.withMessage('Must contain a capital letter'),
+	async (req, res, next) => {
+		const formErrors = validationResult(req);
+		const { email, password } = req.body;
+
+		if (!formErrors.isEmpty()) {
+			res.status(400);
+			return res.json({ user: req.body, errors: formErrors.array() });
+		}
+
+		try {
+			const user = await User.findOne({ email });
+
+			if (!user) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							msg: 'User with this email does not exist',
+							param: 'email',
+							value: email,
+						},
+					],
+				});
+			}
+
+			const passwordMatch = await bcrypt.compare(password, user.password);
+
+			if (!passwordMatch) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							msg: 'Incorrect password',
+							param: 'password',
+							value: password,
+						},
+					],
+				});
+			}
+
+			const jwt = jwtUtil.issueJWT(user);
+			return res.json({ user, success: true, ...jwt });
 		} catch (error) {
 			return next(error);
 		}
@@ -72,15 +141,27 @@ module.exports.putChangeUser = [
 		.isLength({ min: 5 })
 		.withMessage('Minimum length is 5.')
 		.matches('[0-9]')
-		.withMessage('Must contain a number.')
+		.withMessage('Must contain a number')
 		.matches('[A-Z]')
-		.withMessage('Must contain a capital letter.'),
-	body('passwordConfirmation')
-		.custom((value, { req }) => value === req.body.password)
+		.withMessage('Must contain a capital letter'),
+	body('newPassword')
+		.isLength({ min: 5 })
+		.withMessage('Minimum length is 5.')
+		.matches('[0-9]')
+		.withMessage('Must contain a number')
+		.matches('[A-Z]')
+		.withMessage('Must contain a capital letter')
+		.optional({ checkFalsy: true }),
+	body('newPasswordConfirmation')
+		.custom((value, { req }) => {
+			if (req.body.newPassword && !value) return false;
+
+			return value === req.body.newPassword;
+		})
 		.withMessage('Must be identical to password'),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
-		const { password, firstName, lastName } = req.body;
+		const { firstName, lastName, password, newPassword } = req.body;
 		const { userId } = req.params;
 
 		if (!formErrors.isEmpty()) {
@@ -116,13 +197,30 @@ module.exports.putChangeUser = [
 				});
 			}
 
+			const passwordMatch = await bcrypt.compare(password, user.password);
+
+			if (!passwordMatch) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							msg: 'Incorrect password',
+							param: 'password',
+							value: password,
+						},
+					],
+				});
+			}
+
+			const hashedPassword = await bcrypt.hash(newPassword || password, 10);
+
 			await User.findOneAndUpdate(userId, {
-				password,
 				firstName,
 				lastName,
+				password: hashedPassword,
 			});
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
@@ -161,7 +259,7 @@ module.exports.deleteUser = async (req, res, next) => {
 
 		await User.findByIdAndDelete(userId);
 
-		return res.json({ msg: 'successful' });
+		return res.json({ success: true });
 	} catch (error) {
 		return next(error);
 	}

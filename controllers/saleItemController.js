@@ -5,7 +5,7 @@ const SaleItem = require('../models/saleItem');
 module.exports.getAllSaleItems = async (req, res, next) => {
 	try {
 		const saleItems = await SaleItem.find().sort({ name: 'asc' });
-		res.json({ saleItems });
+		res.json({ saleItems, success: true });
 	} catch (error) {
 		next(error);
 	}
@@ -55,7 +55,7 @@ module.exports.postCreatedSaleItem = [
 			});
 			await newSaleItem.save();
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
@@ -117,7 +117,7 @@ module.exports.putChangeSaleItem = [
 				quantity,
 			});
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
@@ -156,7 +156,7 @@ module.exports.deleteSaleItem = async (req, res, next) => {
 
 		await SaleItem.findByIdAndDelete(saleItemId);
 
-		return res.json({ msg: 'successful' });
+		return res.json({ success: true });
 	} catch (error) {
 		return next(error);
 	}

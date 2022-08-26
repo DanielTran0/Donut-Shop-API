@@ -18,8 +18,6 @@ app.get('/', (req, res) => {
 	res.json({ msg: 'This is a api server, use /api/resource' });
 });
 
-app.listen(port, () => {
-	console.log(`App running on port ${port}`);
-});
+app.listen(port);
 
 module.exports = app;

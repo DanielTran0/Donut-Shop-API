@@ -8,7 +8,7 @@ const cloudinaryUploadBuffer = require('../util/cloudinaryUploadBuffer');
 module.exports.getAllFlavours = async (req, res, next) => {
 	try {
 		const flavours = await Flavour.find().sort({ name: 'asc' });
-		res.json({ flavours });
+		res.json({ flavours, success: true });
 	} catch (error) {
 		next(error);
 	}
@@ -70,7 +70,7 @@ module.exports.postCreatedFlavour = [
 			});
 			await newFlavour.save();
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
@@ -148,7 +148,7 @@ module.exports.putChangeFlavour = [
 				monthlySpecial,
 			});
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
@@ -190,7 +190,7 @@ module.exports.deleteFlavour = async (req, res, next) => {
 		if (imageId) await cloudinary.uploader.destroy(imageId);
 		await Flavour.findByIdAndDelete(flavourId);
 
-		return res.json({ msg: 'successful' });
+		return res.json({ success: true });
 	} catch (error) {
 		return next(error);
 	}

@@ -47,12 +47,13 @@ module.exports.getOrder = async (req, res, next) => {
 			});
 		}
 
-		return res.json({ order });
+		return res.json({ order, success: true });
 	} catch (error) {
 		return next(error);
 	}
 };
 
+// TODO add email to owner
 module.exports.postCreatedOrder = [
 	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
 	body('lastName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
@@ -274,7 +275,7 @@ module.exports.postCreatedOrder = [
 			orderDate.remainingOrders = newRemainingOrders;
 			await orderDate.save();
 
-			return res.json({ msg: 'successful' });
+			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
 		}
