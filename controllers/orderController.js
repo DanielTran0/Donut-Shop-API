@@ -53,6 +53,32 @@ module.exports.getOrder = async (req, res, next) => {
 	}
 };
 
+module.exports.getAllOrders = async (req, res, next) => {
+	try {
+		const orders = await Order.find().sort({ date: 'asc' });
+		res.json({ orders, success: true });
+	} catch (error) {
+		next(error);
+	}
+};
+
+module.exports.getAllOpenOrders = async (req, res, next) => {
+	try {
+		const orders = await Order.find({
+			status: {
+				$in: [
+					'waiting for approval',
+					'approved, waiting on payment',
+					'approved and paid',
+				],
+			},
+		}).sort({ date: 'asc' });
+		res.json({ orders, success: true });
+	} catch (error) {
+		next(error);
+	}
+};
+
 // TODO add email to owner
 module.exports.postCreatedOrder = [
 	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
@@ -281,3 +307,7 @@ module.exports.postCreatedOrder = [
 		}
 	},
 ];
+
+module.exports.putChangeOrderStatus = () => {};
+
+module.exports.putChangeOrderInfo = () => {};
