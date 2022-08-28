@@ -15,13 +15,13 @@ const orderSchema = new Schema({
 	status: {
 		type: String,
 		enum: [
-			'waiting for approval',
-			'approved, waiting on payment',
-			'approved and paid',
-			'cancelled',
-			'completed',
+			'Waiting for Approval',
+			'Approved, Waiting on Payment',
+			'Approved and Paid',
+			'Cancelled',
+			'Completed',
 		],
-		default: 'waiting for approval',
+		default: 'Waiting for Approval',
 	},
 	orderItems: [
 		{

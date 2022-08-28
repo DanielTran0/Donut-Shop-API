@@ -58,7 +58,7 @@ module.exports.postCreatedUser = [
 			}
 
 			const hashedPassword = await bcrypt.hash(password, 10);
-			const user = new User({
+			const newUser = new User({
 				email,
 				firstName,
 				lastName,
@@ -66,11 +66,11 @@ module.exports.postCreatedUser = [
 				isAdmin: true,
 			});
 
-			await user.save();
+			await newUser.save();
 
-			const jwt = jwtUtil.issueJWT(user);
+			const jwt = jwtUtil.issueJWT(newUser);
 
-			return res.json({ user, success: true, ...jwt });
+			return res.json({ user: newUser, success: true, ...jwt });
 		} catch (error) {
 			return next(error);
 		}

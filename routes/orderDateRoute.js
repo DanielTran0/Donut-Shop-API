@@ -6,11 +6,15 @@ const router = express.Router();
 
 router.get('/', orderDateController.get3WeeksOfOpenOrderDates);
 router.get(
-	'/admin',
+	'/populate',
 	authenticateRoute,
 	orderDateController.get3WeeksOfOpenOrderDatesPopulatedOrders
 );
-router.get('/all', authenticateRoute, orderDateController.getAllOrderDates);
+router.get(
+	'/year/:year',
+	authenticateRoute,
+	orderDateController.getAllOrderDatesForYear
+);
 
 router.post(
 	'/',

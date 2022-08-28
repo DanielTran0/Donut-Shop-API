@@ -16,7 +16,7 @@ module.exports.get3WeeksOfOpenOrderDates = async (req, res, next) => {
 				dayOff: false,
 			},
 			{ orders: false }
-		);
+		).sort({ date: 'asc' });
 		const removeRemainingOrdersIfOver3 = orderDates.map((orderDate) => {
 			const { _id, date, remainingOrders, dayOff } = orderDate;
 
@@ -43,19 +43,41 @@ module.exports.get3WeeksOfOpenOrderDatesPopulatedOrders = async (
 		const { startDate, endDate } = generate3WeekDateRange();
 		const orderDates = await OrderDate.find({
 			date: { $gte: startDate, $lte: endDate },
-		}).populate('orders');
+		})
+			.populate('orders')
+			.sort({ date: 'asc' });
+
 		res.json({ orderDates, success: true });
 	} catch (error) {
 		next(error);
 	}
 };
 
-module.exports.getAllOrderDates = async (req, res, next) => {
+module.exports.getAllOrderDatesForYear = async (req, res, next) => {
 	try {
-		const orderDates = await OrderDate.find();
-		res.json({ orderDates, success: true });
+		const { year } = req.params;
+
+		if (!/^\d{4}$/.test(year)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						location: 'body',
+						msg: 'Enter 4 digit year',
+						param: 'year',
+						value: year,
+					},
+				],
+			});
+		}
+
+		const orderDates = await OrderDate.find({ date: { $regex: year } }).sort({
+			date: 'asc',
+		});
+
+		return res.json({ orderDates, success: true });
 	} catch (error) {
-		next(error);
+		return next(error);
 	}
 };
 

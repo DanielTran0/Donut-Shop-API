@@ -14,7 +14,6 @@ app.use('/api/saleItem', saleItemRoute);
 app.use('/api/orderDate', orderDateRoute);
 app.use('/api/order', orderRoute);
 app.use('/api/user', userRoute);
-
 app.use((req, res, next) => {
 	next(createError(404));
 });
