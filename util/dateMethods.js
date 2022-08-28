@@ -51,7 +51,7 @@ const generateOrderDates = (weekends, orderLimit = 20) => {
 	}));
 };
 
-const generate3WeekDateRange = () => {
+const generate3WeekDateRange = (isSunday) => {
 	const currentDate = new Date();
 	let thirdSunday = addWeeks(currentDate, 2);
 
@@ -60,7 +60,9 @@ const generate3WeekDateRange = () => {
 	}
 
 	return {
-		startDate: formatDateToString(currentDate),
+		startDate: isSunday
+			? formatDateToString(addDays(currentDate, -1))
+			: formatDateToString(currentDate),
 		endDate: formatDateToString(thirdSunday),
 	};
 };

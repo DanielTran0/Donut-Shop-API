@@ -4,8 +4,8 @@ const orderController = require('../controllers/orderController');
 const router = express.Router();
 
 // TODO authenticate and add controllers for routes
-router.get('/', orderController.getAllOrders);
-router.get('/open', orderController.getAllOpenOrders);
+router.get('/year', orderController.getAllOrdersForYear);
+router.get('/search', orderController.getSearchOrder);
 router.get('/:orderId', orderController.getOrder);
 
 router.post('/', orderController.postCreatedOrder);

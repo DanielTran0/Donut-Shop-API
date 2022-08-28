@@ -53,29 +53,89 @@ module.exports.getOrder = async (req, res, next) => {
 	}
 };
 
-module.exports.getAllOrders = async (req, res, next) => {
+module.exports.getAllOrdersForYear = async (req, res, next) => {
 	try {
-		const orders = await Order.find().sort({ date: 'asc' });
-		res.json({ orders, success: true });
+		const { year } = req.query;
+		const skip = Number(req.query.skip);
+
+		if (!/^\d{4}$/.test(year)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						location: 'body',
+						msg: 'Enter 4 digit year',
+						param: 'year',
+						value: year,
+					},
+				],
+			});
+		}
+		if (Number.isNaN(skip)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						location: 'body',
+						msg: 'Skip value is not a number',
+						param: 'skip',
+						value: skip,
+					},
+				],
+			});
+		}
+
+		const orders = await Order.find({ dateOrderPickUp: { $regex: year } })
+			.sort({ dateOrderPickUp: 'asc' })
+			.limit(15)
+			.skip(skip);
+
+		return res.json({ orders, success: true });
 	} catch (error) {
-		next(error);
+		return next(error);
 	}
 };
 
-module.exports.getAllOpenOrders = async (req, res, next) => {
+module.exports.getSearchOrder = async (req, res, next) => {
 	try {
-		const orders = await Order.find({
-			status: {
-				$in: [
-					'waiting for approval',
-					'approved, waiting on payment',
-					'approved and paid',
+		const queryOptions = {
+			firstName: true,
+			lastName: true,
+			email: true,
+			dateOrderPickUp: true,
+		};
+		const queryKeys = Object.keys(req.query);
+		const validQueryKeys = queryKeys.filter(
+			(key) => queryOptions[key] && req.query[key]
+		);
+
+		if (validQueryKeys.length === 0) {
+			return res.status(400).json({
+				info: req.query,
+				errors: [
+					{
+						location: 'body',
+						msg: 'Please enter valid query',
+						param: 'query',
+					},
 				],
-			},
-		}).sort({ date: 'asc' });
-		res.json({ orders, success: true });
+			});
+		}
+
+		const query = {};
+		for (let i = 0; i < validQueryKeys.length; i += 1) {
+			const queryKey = validQueryKeys[i];
+
+			query[queryKey] = { $regex: new RegExp(req.query[queryKey], 'i') };
+		}
+
+		const orders = await Order.find({ ...query }).sort({
+			dateOrderPickUp: 'asc',
+		});
+
+		return res.json({ orders, success: true });
 	} catch (error) {
-		next(error);
+		return next(error);
 	}
 };
 
@@ -289,7 +349,6 @@ module.exports.postCreatedOrder = [
 				timeOrderPickUp: formatTimeToString(pickUpDateTime),
 				dateOrderPlaced: formatDateToString(currentDate),
 				timeOrderPlaced: formatTimeToString(currentDate),
-				status: 'waiting for approval',
 				paid: false,
 				orderItems,
 				totalCost,

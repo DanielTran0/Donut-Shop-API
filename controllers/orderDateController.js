@@ -40,7 +40,8 @@ module.exports.get3WeeksOfOpenOrderDatesPopulatedOrders = async (
 	next
 ) => {
 	try {
-		const { startDate, endDate } = generate3WeekDateRange();
+		const isSunday = new Date().getDay() === 0;
+		const { startDate, endDate } = generate3WeekDateRange(isSunday);
 		const orderDates = await OrderDate.find({
 			date: { $gte: startDate, $lte: endDate },
 		})
