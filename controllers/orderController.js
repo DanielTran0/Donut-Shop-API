@@ -16,6 +16,7 @@ const {
 	validFlavourQuantity,
 	calculateAmountAndCostOfOrderItems,
 } = require('../util/orderValidationMethods');
+const { addCancelledAmountBackToOrderDate } = require('../util/orderUtil');
 
 module.exports.getOrder = async (req, res, next) => {
 	const { orderId } = req.params;
@@ -139,7 +140,7 @@ module.exports.getSearchOrder = async (req, res, next) => {
 	}
 };
 
-// TODO add email to owner
+// TODO add email to owner and client
 module.exports.postCreatedOrder = [
 	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
 	body('lastName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
@@ -221,6 +222,7 @@ module.exports.postCreatedOrder = [
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
 		const currentDate = new Date();
+		const orderItems = JSON.parse(req.body.orderItems);
 		const {
 			firstName,
 			lastName,
@@ -232,7 +234,6 @@ module.exports.postCreatedOrder = [
 			timeOrderPickUpHour,
 			timeOrderPickUpMinute,
 		} = req.body;
-		const orderItems = JSON.parse(req.body.orderItems);
 
 		if (!formErrors.isEmpty()) {
 			return res
@@ -346,12 +347,11 @@ module.exports.postCreatedOrder = [
 				note,
 				allergy,
 				dateOrderPickUp,
+				orderItems,
+				totalCost,
 				timeOrderPickUp: formatTimeToString(pickUpDateTime),
 				dateOrderPlaced: formatDateToString(currentDate),
 				timeOrderPlaced: formatTimeToString(currentDate),
-				paid: false,
-				orderItems,
-				totalCost,
 			});
 
 			await newOrder.save();
@@ -367,6 +367,169 @@ module.exports.postCreatedOrder = [
 	},
 ];
 
-module.exports.putChangeOrderStatus = () => {};
+module.exports.putChangeOrderStatus = [
+	body('status')
+		.trim()
+		.escape()
+		.custom((status) =>
+			[
+				'Waiting for Approval',
+				'Approved, Waiting on Payment',
+				'Approved and Paid',
+				'Cancelled',
+				'Completed',
+			].includes(status)
+		)
+		.withMessage('Invalid order status'),
+	body('message')
+		.trim()
+		.escape()
+		.custom((message, { req }) => {
+			if (req.status === 'Cancelled' && !message) return false;
+
+			return true;
+		})
+		.withMessage('Cancelled order needs reason for cancellation to client'),
+	async (req, res, next) => {
+		const formErrors = validationResult(req);
+		const { status, message } = req.body;
+		const { orderId } = req.params;
+
+		if (!formErrors.isEmpty()) {
+			return res
+				.status(400)
+				.json({ info: req.body, errors: formErrors.array() });
+		}
+		if (!isValidObjectId(orderId)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						msg: 'invalid order id',
+						param: 'orderId',
+						value: orderId,
+					},
+				],
+			});
+		}
+
+		try {
+			const order = await Order.findById(orderId);
+
+			if (!order) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							msg: 'order does not exist',
+							param: 'orderId',
+							value: orderId,
+						},
+					],
+				});
+			}
+			if (order.status === status) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							msg: 'order currently has this status',
+							param: 'status',
+							value: status,
+						},
+					],
+				});
+			}
+			if (order.status === 'Cancelled') {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							msg: 'cannot change status of cancelled order',
+							param: 'status',
+							value: status,
+						},
+					],
+				});
+			}
+			if (status === 'Cancelled') {
+				await addCancelledAmountBackToOrderDate(
+					order.orderItems,
+					order.pickUpDateTime
+				);
+
+				// TODO send email to client on why order was cancelled
+			}
+
+			order.status = status;
+			await order.save();
+
+			return res.json({ success: true });
+		} catch (error) {
+			return next(error);
+		}
+	},
+];
+
+module.exports.putCancelOrder = async (req, res, next) => {
+	const currentDate = new Date();
+	const { orderId } = req.params;
+
+	if (!isValidObjectId(orderId)) {
+		return res.status(400).json({
+			info: req.body,
+			errors: [
+				{
+					msg: 'invalid order id',
+					param: 'orderId',
+					value: orderId,
+				},
+			],
+		});
+	}
+
+	try {
+		const order = await Order.findById(orderId);
+
+		if (!order) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						msg: 'order does not exist',
+						param: 'orderId',
+						value: orderId,
+					},
+				],
+			});
+		}
+		if (order.status === 'Cancelled') {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						msg: 'Order has already been cancelled',
+						param: 'status',
+						value: 'Cancelled',
+					},
+				],
+			});
+		}
+		// TODO check if date is before friday deadline
+
+		await addCancelledAmountBackToOrderDate(order.orderItems, currentDate);
+
+		// TODO send email to client on why order was cancelled
+
+		order.status = 'Cancelled';
+		await order.save();
+
+		return res.json({ success: true });
+	} catch (error) {
+		return next(error);
+	}
+};
+
+module.exports.putAcceptOrder = () => {};
 
 module.exports.putChangeOrderInfo = () => {};

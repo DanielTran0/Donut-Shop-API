@@ -8,6 +8,7 @@ const cloudinaryUploadBuffer = require('../util/cloudinaryUploadBuffer');
 module.exports.getAllFlavours = async (req, res, next) => {
 	try {
 		const flavours = await Flavour.find().sort({ name: 'asc' });
+
 		res.json({ flavours, success: true });
 	} catch (error) {
 		next(error);

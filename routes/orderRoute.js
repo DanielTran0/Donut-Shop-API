@@ -10,8 +10,8 @@ router.get('/:orderId', orderController.getOrder);
 
 router.post('/', orderController.postCreatedOrder);
 
-router.put('/:orderId');
-
-router.delete('/:orderId');
+router.put('/status/:orderId', orderController.putChangeOrderStatus);
+router.put('/info/:orderId', orderController.putChangeOrderInfo);
+router.put('/cancel/:orderId', orderController.putCancelOrder);
 
 module.exports = router;

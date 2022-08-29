@@ -7,6 +7,7 @@ const jwtUtil = require('../util/jwtUtil');
 module.exports.getAllUsers = async (req, res, next) => {
 	try {
 		const users = await User.find().sort({ email: 'asc' });
+
 		res.json({ users, success: true });
 	} catch (error) {
 		next(error);
@@ -158,15 +159,16 @@ module.exports.putChangeUser = [
 
 			return value === req.body.newPassword;
 		})
-		.withMessage('Must be identical to password'),
+		.withMessage('Must be identical to new password'),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
 		const { firstName, lastName, password, newPassword } = req.body;
 		const { userId } = req.params;
 
 		if (!formErrors.isEmpty()) {
-			res.status(400);
-			return res.json({ user: req.body, errors: formErrors.array() });
+			return res
+				.status(400)
+				.json({ user: req.body, errors: formErrors.array() });
 		}
 		if (!isValidObjectId(userId)) {
 			return res.status(400).json({
@@ -212,9 +214,11 @@ module.exports.putChangeUser = [
 				});
 			}
 
-			const hashedPassword = await bcrypt.hash(newPassword || password, 10);
+			const hashedPassword = newPassword
+				? await bcrypt.hash(newPassword, 10)
+				: user.password;
 
-			await User.findOneAndUpdate(userId, {
+			await User.findByIdAndUpdate(userId, {
 				firstName,
 				lastName,
 				password: hashedPassword,

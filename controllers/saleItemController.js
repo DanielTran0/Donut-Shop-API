@@ -5,6 +5,7 @@ const SaleItem = require('../models/saleItem');
 module.exports.getAllSaleItems = async (req, res, next) => {
 	try {
 		const saleItems = await SaleItem.find().sort({ name: 'asc' });
+
 		res.json({ saleItems, success: true });
 	} catch (error) {
 		next(error);
