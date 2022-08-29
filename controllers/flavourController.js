@@ -21,8 +21,8 @@ module.exports.postCreatedFlavour = [
 	body('description')
 		.trim()
 		.escape()
-		.optional({ checkFalsy: true })
-		.isAlphanumeric('en-US', { ignore: ' ' }),
+		.isAlphanumeric('en-US', { ignore: ' ' })
+		.optional({ checkFalsy: true }),
 	body('monthlySpecial')
 		.trim()
 		.escape()
@@ -84,8 +84,8 @@ module.exports.putChangeFlavour = [
 	body('description')
 		.trim()
 		.escape()
-		.optional({ checkFalsy: true })
-		.isAlphanumeric('en-US', { ignore: ' ' }),
+		.isAlphanumeric('en-US', { ignore: ' ' })
+		.optional({ checkFalsy: true }),
 	body('monthlySpecial')
 		.trim()
 		.escape()

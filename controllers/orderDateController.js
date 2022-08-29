@@ -132,6 +132,7 @@ module.exports.postAllWeekendOrderDaysInYear = [
 	},
 ];
 
+// TODO check if orders already in orderDate
 module.exports.putTurnOrderDateOff = [
 	body('dayOff')
 		.trim()
@@ -236,6 +237,9 @@ module.exports.putChangeOrderLimit = [
 	},
 ];
 
+/* 
+Not in use, see comment in orderDate router
+
 module.exports.deleteOrderDate = async (req, res, next) => {
 	const { orderDateId } = req.params;
 
@@ -274,3 +278,4 @@ module.exports.deleteOrderDate = async (req, res, next) => {
 		return next(error);
 	}
 };
+*/

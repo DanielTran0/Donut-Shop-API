@@ -33,10 +33,15 @@ router.put(
 	orderDateController.putChangeOrderLimit
 );
 
+/*
+orderDate delete method not in use, no point in deleting date
+can instead deactivate it with day off
+
 router.delete(
 	'/:orderDateId',
 	authenticateRoute,
 	orderDateController.deleteOrderDate
 );
+*/
 
 module.exports = router;

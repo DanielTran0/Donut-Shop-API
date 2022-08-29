@@ -17,8 +17,8 @@ module.exports.postCreatedSaleItem = [
 	body('description')
 		.trim()
 		.escape()
-		.optional({ checkFalsy: true })
-		.isAlphanumeric('en-US', { ignore: ' ' }),
+		.isAlphanumeric('en-US', { ignore: ' ' })
+		.optional({ checkFalsy: true }),
 	body('price').trim().escape().isNumeric(),
 	body('quantity').trim().escape().isNumeric(),
 	async (req, res, next) => {
@@ -68,8 +68,8 @@ module.exports.putChangeSaleItem = [
 	body('description')
 		.trim()
 		.escape()
-		.optional({ checkFalsy: true })
-		.isAlphanumeric('en-US', { ignore: ' ' }),
+		.isAlphanumeric('en-US', { ignore: ' ' })
+		.optional({ checkFalsy: true }),
 	body('price').trim().escape().isNumeric(),
 	body('quantity').trim().escape().isNumeric(),
 	async (req, res, next) => {
