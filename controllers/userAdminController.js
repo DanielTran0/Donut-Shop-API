@@ -16,8 +16,8 @@ module.exports.getAllUsers = async (req, res, next) => {
 
 module.exports.postCreatedUser = [
 	body('email').trim().escape().isEmail().normalizeEmail(),
-	body('firstName').trim().escape().isAlphanumeric(),
-	body('lastName').trim().escape().isAlphanumeric(),
+	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('lastName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
 	body('password')
 		.isLength({ min: 5 })
 		.withMessage('Minimum length is 5')
@@ -38,8 +38,9 @@ module.exports.postCreatedUser = [
 		const { email, password, firstName, lastName } = req.body;
 
 		if (!formErrors.isEmpty()) {
-			res.status(400);
-			return res.json({ user: req.body, errors: formErrors.array() });
+			return res
+				.status(400)
+				.json({ user: req.body, errors: formErrors.array() });
 		}
 
 		try {
@@ -92,8 +93,9 @@ module.exports.postUserLogin = [
 		const { email, password } = req.body;
 
 		if (!formErrors.isEmpty()) {
-			res.status(400);
-			return res.json({ user: req.body, errors: formErrors.array() });
+			return res
+				.status(400)
+				.json({ user: req.body, errors: formErrors.array() });
 		}
 
 		try {
@@ -128,6 +130,7 @@ module.exports.postUserLogin = [
 			}
 
 			const jwt = jwtUtil.issueJWT(user);
+
 			return res.json({ user, success: true, ...jwt });
 		} catch (error) {
 			return next(error);
@@ -136,8 +139,8 @@ module.exports.postUserLogin = [
 ];
 
 module.exports.putChangeUser = [
-	body('firstName').trim().escape().isAlphanumeric(),
-	body('lastName').trim().escape().isAlphanumeric(),
+	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('lastName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
 	body('password')
 		.isLength({ min: 5 })
 		.withMessage('Minimum length is 5.')
@@ -154,16 +157,12 @@ module.exports.putChangeUser = [
 		.withMessage('Must contain a capital letter')
 		.optional({ checkFalsy: true }),
 	body('newPasswordConfirmation')
-		.custom((value, { req }) => {
-			if (req.body.newPassword && !value) return false;
-
-			return value === req.body.newPassword;
-		})
+		.custom((value, { req }) => value === req.body.newPassword)
 		.withMessage('Must be identical to new password'),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
 		const { firstName, lastName, password, newPassword } = req.body;
-		const { userId } = req.params;
+		const userId = req.user._id;
 
 		if (!formErrors.isEmpty()) {
 			return res
@@ -233,7 +232,7 @@ module.exports.putChangeUser = [
 
 module.exports.deleteUser = async (req, res, next) => {
 	try {
-		const { userId } = req.params;
+		const userId = req.user._id;
 
 		if (!isValidObjectId(userId)) {
 			return res.status(400).json({
