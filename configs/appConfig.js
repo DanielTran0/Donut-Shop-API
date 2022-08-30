@@ -3,12 +3,14 @@ const cors = require('cors');
 const logger = require('morgan');
 const compression = require('compression');
 const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(mongoSanitize({}));
 app.use(logger('dev'));
 app.use(cors({ origin: process.env.CLIENT_SITE || 'http://localhost:3000/' }));
 app.use(compression());

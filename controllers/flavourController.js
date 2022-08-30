@@ -17,15 +17,10 @@ module.exports.getAllFlavours = async (req, res, next) => {
 
 module.exports.postCreatedFlavour = [
 	multerUpload.single('image'),
-	body('name').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
-	body('description')
-		.trim()
-		.escape()
-		.isAlphanumeric('en-US', { ignore: ' ' })
-		.optional({ checkFalsy: true }),
+	body('name').trim().notEmpty(),
+	body('description').trim().optional({ checkFalsy: true }),
 	body('monthlySpecial')
 		.trim()
-		.escape()
 		.custom((value) => ['true', 'false'].includes(value))
 		.withMessage('true or false'),
 	async (req, res, next) => {
@@ -80,15 +75,10 @@ module.exports.postCreatedFlavour = [
 
 module.exports.putChangeFlavour = [
 	multerUpload.single('image'),
-	body('name').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
-	body('description')
-		.trim()
-		.escape()
-		.isAlphanumeric('en-US', { ignore: ' ' })
-		.optional({ checkFalsy: true }),
+	body('name').trim().notEmpty(),
+	body('description').trim().optional({ checkFalsy: true }),
 	body('monthlySpecial')
 		.trim()
-		.escape()
 		.custom((value) => ['true', 'false'].includes(value))
 		.withMessage('true or false'),
 	async (req, res, next) => {

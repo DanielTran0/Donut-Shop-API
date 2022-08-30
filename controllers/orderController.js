@@ -140,29 +140,20 @@ module.exports.getSearchOrder = async (req, res, next) => {
 	}
 };
 
-// TODO add email to owner and client
 module.exports.postCreatedOrder = [
-	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
-	body('lastName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
-	body('email').trim().escape().isEmail().normalizeEmail(),
-	body('phone').trim().escape().isMobilePhone('en-CA'),
-	body('note')
-		.trim()
-		.escape()
-		.isAlphanumeric('en-US', { ignore: ' ' })
-		.optional({ checkFalsy: true }),
-	body('allergy')
-		.trim()
-		.escape()
-		.isAlphanumeric('en-US', { ignore: ' ' })
-		.optional({ checkFalsy: true }),
+	body('firstName').trim().notEmpty(),
+	body('lastName').trim().notEmpty(),
+	body('email').trim().isEmail().normalizeEmail(),
+	body('phone').trim().isMobilePhone('en-CA'),
+	body('note').trim().optional({ checkFalsy: true }),
+	body('allergy').trim().optional({ checkFalsy: true }),
 	body('dateOrderPickUp')
 		.trim()
 		.custom((value) => /^\d{4}\/\d{2}\/\d{2}$/.test(value))
 		.withMessage('yyyy/MM/dd'),
 	body('timeOrderPickUpHour')
 		.trim()
-		.escape()
+
 		.custom((value) => {
 			if (!value) return false;
 
@@ -175,7 +166,7 @@ module.exports.postCreatedOrder = [
 		.withMessage('time has to be between 12 to 16'),
 	body('timeOrderPickUpMinute')
 		.trim()
-		.escape()
+
 		.custom((value, { req }) => {
 			if (!value) return false;
 
@@ -327,10 +318,7 @@ module.exports.postCreatedOrder = [
 					errors: [
 						{
 							location: 'body',
-							msg:
-								newRemainingOrders <= 3
-									? `only ${newRemainingOrders} orders left`
-									: 'order amount exceeds daily order limit',
+							msg: 'order amount will exceed our daily order limit',
 							param: 'orderItems',
 							value: orderItems,
 						},
@@ -363,6 +351,8 @@ module.exports.postCreatedOrder = [
 			orderDate.remainingOrders = newRemainingOrders;
 			await orderDate.save();
 
+			// TODO email to owner and client
+
 			return res.json({ success: true });
 		} catch (error) {
 			return next(error);
@@ -373,7 +363,6 @@ module.exports.postCreatedOrder = [
 module.exports.putChangeOrderStatus = [
 	body('status')
 		.trim()
-		.escape()
 		.custom((status) =>
 			[
 				'Waiting for Approval',
@@ -386,7 +375,6 @@ module.exports.putChangeOrderStatus = [
 		.withMessage('Invalid order status'),
 	body('message')
 		.trim()
-		.escape()
 		.custom((message, { req }) => {
 			if (req.status === 'Cancelled' && !message) return false;
 

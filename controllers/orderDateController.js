@@ -85,7 +85,6 @@ module.exports.getAllOrderDatesForYear = async (req, res, next) => {
 module.exports.postAllWeekendOrderDaysInYear = [
 	body('year')
 		.trim()
-		.escape()
 		.custom((year) => /^\d{4}$/.test(year))
 		.withMessage('4 digit year'),
 	async (req, res, next) => {
@@ -135,7 +134,6 @@ module.exports.postAllWeekendOrderDaysInYear = [
 module.exports.putTurnOrderDateOff = [
 	body('dayOff')
 		.trim()
-		.escape()
 		.custom((value) => ['true', 'false'].includes(value))
 		.withMessage('true or false'),
 	async (req, res, next) => {
@@ -214,7 +212,7 @@ module.exports.putTurnOrderDateOff = [
 ];
 
 module.exports.putChangeAddToOrderLimit = [
-	body('additionalOrders').trim().escape().isNumeric(),
+	body('additionalOrders').trim().isNumeric(),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
 		const { additionalOrders } = req.body;

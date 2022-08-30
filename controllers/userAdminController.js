@@ -15,9 +15,9 @@ module.exports.getAllUsers = async (req, res, next) => {
 };
 
 module.exports.postCreatedUser = [
-	body('email').trim().escape().isEmail().normalizeEmail(),
-	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
-	body('lastName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('email').trim().isEmail().normalizeEmail(),
+	body('firstName').trim().notEmpty(),
+	body('lastName').trim().notEmpty(),
 	body('password')
 		.isLength({ min: 5 })
 		.withMessage('Minimum length is 5')
@@ -80,7 +80,7 @@ module.exports.postCreatedUser = [
 ];
 
 module.exports.postUserLogin = [
-	body('email').trim().escape().isEmail().normalizeEmail(),
+	body('email').trim().isEmail().normalizeEmail(),
 	body('password')
 		.isLength({ min: 5 })
 		.withMessage('Minimum length is 5')
@@ -139,8 +139,8 @@ module.exports.postUserLogin = [
 ];
 
 module.exports.putChangeUser = [
-	body('firstName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
-	body('lastName').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
+	body('firstName').trim().notEmpty(),
+	body('lastName').trim().notEmpty(),
 	body('password')
 		.isLength({ min: 5 })
 		.withMessage('Minimum length is 5.')

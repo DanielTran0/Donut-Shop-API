@@ -13,14 +13,10 @@ module.exports.getAllSaleItems = async (req, res, next) => {
 };
 
 module.exports.postCreatedSaleItem = [
-	body('name').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
-	body('description')
-		.trim()
-		.escape()
-		.isAlphanumeric('en-US', { ignore: ' ' })
-		.optional({ checkFalsy: true }),
-	body('price').trim().escape().isNumeric(),
-	body('quantity').trim().escape().isNumeric(),
+	body('name').trim().notEmpty(),
+	body('description').trim().optional({ checkFalsy: true }),
+	body('price').trim().isNumeric(),
+	body('quantity').trim().isNumeric(),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
 		const { name, description, price, quantity } = req.body;
@@ -64,14 +60,10 @@ module.exports.postCreatedSaleItem = [
 ];
 
 module.exports.putChangeSaleItem = [
-	body('name').trim().escape().isAlphanumeric('en-US', { ignore: ' ' }),
-	body('description')
-		.trim()
-		.escape()
-		.isAlphanumeric('en-US', { ignore: ' ' })
-		.optional({ checkFalsy: true }),
-	body('price').trim().escape().isNumeric(),
-	body('quantity').trim().escape().isNumeric(),
+	body('name').trim().notEmpty(),
+	body('description').trim().optional({ checkFalsy: true }),
+	body('price').trim().isNumeric(),
+	body('quantity').trim().isNumeric(),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
 		const { name, description, price, quantity } = req.body;
