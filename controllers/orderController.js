@@ -149,13 +149,13 @@ module.exports.postCreatedOrder = [
 	body('note')
 		.trim()
 		.escape()
-		.optional({ checkFalsy: true })
-		.isAlphanumeric('en-US', { ignore: ' ' }),
+		.isAlphanumeric('en-US', { ignore: ' ' })
+		.optional({ checkFalsy: true }),
 	body('allergy')
 		.trim()
 		.escape()
-		.optional({ checkFalsy: true })
-		.isAlphanumeric('en-US', { ignore: ' ' }),
+		.isAlphanumeric('en-US', { ignore: ' ' })
+		.optional({ checkFalsy: true }),
 	body('dateOrderPickUp')
 		.trim()
 		.custom((value) => /^\d{4}\/\d{2}\/\d{2}$/.test(value))
@@ -280,7 +280,7 @@ module.exports.postCreatedOrder = [
 					errors: [
 						{
 							location: 'body',
-							msg: 'order has to be placed by Friday 4:00 pm',
+							msg: 'order has to be placed by Friday 6:00 pm',
 							param: 'dateOrderPickUp',
 							value: dateOrderPickUp,
 						},
@@ -327,7 +327,10 @@ module.exports.postCreatedOrder = [
 					errors: [
 						{
 							location: 'body',
-							msg: 'order amount exceeds daily order limit',
+							msg:
+								newRemainingOrders <= 3
+									? `only ${newRemainingOrders} orders left`
+									: 'order amount exceeds daily order limit',
 							param: 'orderItems',
 							value: orderItems,
 						},
@@ -392,7 +395,8 @@ module.exports.putChangeOrderStatus = [
 		.withMessage('Cancelled order needs reason for cancellation to client'),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
-		const { status, message } = req.body;
+		// TODO add message to destructuring
+		const { status } = req.body;
 		const { orderId } = req.params;
 
 		if (!formErrors.isEmpty()) {

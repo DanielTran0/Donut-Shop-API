@@ -30,7 +30,7 @@ router.put(
 router.put(
 	'/remainingOrders/:orderDateId',
 	authenticateRoute,
-	orderDateController.putChangeOrderLimit
+	orderDateController.putChangeAddToOrderLimit
 );
 
 /*

@@ -24,7 +24,7 @@ module.exports.get3WeeksOfOpenOrderDates = async (req, res, next) => {
 				_id,
 				date,
 				dayOff,
-				remainingOrders: remainingOrders < 3 ? remainingOrders : null,
+				remainingOrders: remainingOrders <= 3 ? remainingOrders : null,
 			};
 		});
 
@@ -132,7 +132,6 @@ module.exports.postAllWeekendOrderDaysInYear = [
 	},
 ];
 
-// TODO check if orders already in orderDate
 module.exports.putTurnOrderDateOff = [
 	body('dayOff')
 		.trim()
@@ -163,9 +162,11 @@ module.exports.putTurnOrderDateOff = [
 		}
 
 		try {
-			const orderDateExists = await OrderDate.findById(orderDateId);
+			const orderDate = await OrderDate.findById(orderDateId).populate(
+				'orders'
+			);
 
-			if (!orderDateExists) {
+			if (!orderDate) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -178,6 +179,31 @@ module.exports.putTurnOrderDateOff = [
 				});
 			}
 
+			if (JSON.parse(dayOff) && orderDate.orders.length > 0) {
+				const { orders } = orderDate;
+
+				for (let i = 0; i < orders.length; i += 1) {
+					if (
+						[
+							'Waiting for Approval',
+							'Approved, Waiting on Payment',
+							'Approved and Paid',
+						].includes(orders[i].status)
+					) {
+						return res.status(400).json({
+							info: req.body,
+							errors: [
+								{
+									msg: 'please cancel or complete all open orders before taking day off',
+									param: 'orderDateId',
+									value: orderDateId,
+								},
+							],
+						});
+					}
+				}
+			}
+
 			await OrderDate.findByIdAndUpdate(orderDateId, { dayOff });
 
 			return res.json({ success: true });
@@ -187,11 +213,11 @@ module.exports.putTurnOrderDateOff = [
 	},
 ];
 
-module.exports.putChangeOrderLimit = [
-	body('remainingOrders').trim().escape().isNumeric(),
+module.exports.putChangeAddToOrderLimit = [
+	body('additionalOrders').trim().escape().isNumeric(),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
-		const { remainingOrders } = req.body;
+		const { additionalOrders } = req.body;
 		const { orderDateId } = req.params;
 
 		if (!formErrors.isEmpty()) {
@@ -213,9 +239,9 @@ module.exports.putChangeOrderLimit = [
 		}
 
 		try {
-			const orderDateExists = await OrderDate.findById(orderDateId);
+			const orderDate = await OrderDate.findById(orderDateId);
 
-			if (!orderDateExists) {
+			if (!orderDate) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -228,7 +254,22 @@ module.exports.putChangeOrderLimit = [
 				});
 			}
 
-			await OrderDate.findByIdAndUpdate(orderDateId, { remainingOrders });
+			orderDate.remainingOrders += Number(additionalOrders);
+
+			if (orderDate.remainingOrders < 0) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							msg: 'remaining order can not be under 0',
+							param: 'remainingOrders',
+							value: additionalOrders,
+						},
+					],
+				});
+			}
+
+			await orderDate.save();
 
 			return res.json({ success: true });
 		} catch (error) {
