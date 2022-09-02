@@ -8,6 +8,10 @@ const formatTimeToString = (date) => {
 	return format(date, 'hh:mm aaa');
 };
 
+const formatDateToStringFull = (date) => {
+	return format(date, 'PPPP');
+};
+
 const generateAllWeekendsInAYear = (year) => {
 	const weekends = [];
 	let date = new Date(year, 0, 1);
@@ -100,6 +104,7 @@ const isOrderBeforeFridayDeadline = (date, orderDate) => {
 module.exports = {
 	formatDateToString,
 	formatTimeToString,
+	formatDateToStringFull,
 	generateAllWeekendsInAYear,
 	generateOrderDates,
 	generate3WeekDateRange,

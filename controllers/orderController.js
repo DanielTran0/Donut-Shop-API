@@ -1,22 +1,14 @@
 const { body, validationResult } = require('express-validator');
 const { isValidObjectId } = require('mongoose');
+const sgMail = require('@sendgrid/mail');
 const Order = require('../models/order');
 const OrderDate = require('../models/orderDate');
 const SaleItem = require('../models/saleItem');
 const Flavour = require('../models/flavour');
-const {
-	formatDateToString,
-	formatTimeToString,
-	isOrderDateIn3WeekRange,
-	isOrderBeforeFridayDeadline,
-} = require('../util/dateMethods');
-const {
-	doAllOrderItemNamesExist,
-	addSaleItemPriceAndQuantityToOrder,
-	validFlavourQuantity,
-	calculateAmountAndCostOfOrderItems,
-} = require('../util/orderValidationMethods');
-const { addCancelledAmountBackToOrderDate } = require('../util/orderUtil');
+const dateMethods = require('../util/dateMethods');
+const orderValidationMethods = require('../util/orderValidationMethods');
+const orderUtil = require('../util/orderUtil');
+const emailFormat = require('../util/emailFormat');
 
 module.exports.getOrder = async (req, res, next) => {
 	const { orderId } = req.params;
@@ -145,7 +137,6 @@ module.exports.postCreatedOrder = [
 	body('lastName').trim().notEmpty(),
 	body('email').trim().isEmail().normalizeEmail(),
 	body('phone').trim().isMobilePhone('en-CA'),
-	body('note').trim().optional({ checkFalsy: true }),
 	body('allergy').trim().optional({ checkFalsy: true }),
 	body('dateOrderPickUp')
 		.trim()
@@ -219,7 +210,6 @@ module.exports.postCreatedOrder = [
 			lastName,
 			email,
 			phone,
-			note,
 			allergy,
 			dateOrderPickUp,
 			timeOrderPickUpHour,
@@ -252,7 +242,7 @@ module.exports.postCreatedOrder = [
 					],
 				});
 			}
-			if (!isOrderDateIn3WeekRange(dateOrderPickUp)) {
+			if (!dateMethods.isOrderDateIn3WeekRange(dateOrderPickUp)) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -265,7 +255,9 @@ module.exports.postCreatedOrder = [
 					],
 				});
 			}
-			if (!isOrderBeforeFridayDeadline(currentDate, dateOrderPickUp)) {
+			if (
+				!dateMethods.isOrderBeforeFridayDeadline(currentDate, dateOrderPickUp)
+			) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -278,7 +270,13 @@ module.exports.postCreatedOrder = [
 					],
 				});
 			}
-			if (!doAllOrderItemNamesExist(orderItems, saleItems, flavours)) {
+			if (
+				!orderValidationMethods.doAllOrderItemNamesExist(
+					orderItems,
+					saleItems,
+					flavours
+				)
+			) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -292,9 +290,12 @@ module.exports.postCreatedOrder = [
 				});
 			}
 
-			addSaleItemPriceAndQuantityToOrder(orderItems, saleItems);
+			orderValidationMethods.addSaleItemPriceAndQuantityToOrder(
+				orderItems,
+				saleItems
+			);
 
-			if (!validFlavourQuantity(orderItems)) {
+			if (!orderValidationMethods.validFlavourQuantity(orderItems)) {
 				return res.status(400).json({
 					info: req.body,
 					errors: [
@@ -309,7 +310,7 @@ module.exports.postCreatedOrder = [
 			}
 
 			const { totalAmount, totalCost } =
-				calculateAmountAndCostOfOrderItems(orderItems);
+				orderValidationMethods.calculateAmountAndCostOfOrderItems(orderItems);
 			const newRemainingOrders = orderDate.remainingOrders - totalAmount;
 
 			if (newRemainingOrders < 0) {
@@ -330,28 +331,79 @@ module.exports.postCreatedOrder = [
 			pickUpDateTime.setHours(timeOrderPickUpHour);
 			pickUpDateTime.setMinutes(timeOrderPickUpMinute);
 
+			const dateOrderPickUpFull = dateMethods.formatDateToStringFull(
+				new Date(dateOrderPickUp)
+			);
+			const timeOrderPickUp = dateMethods.formatTimeToString(pickUpDateTime);
+			const dateOrderPlaced = dateMethods.formatDateToString(currentDate);
+			const dateOrderPlacedFull =
+				dateMethods.formatDateToStringFull(currentDate);
+			const timeOrderPlaced = dateMethods.formatTimeToString(currentDate);
+
 			const newOrder = new Order({
 				firstName,
 				lastName,
 				email,
 				phone,
-				note,
 				allergy,
+				dateOrderPlaced,
+				timeOrderPlaced,
 				dateOrderPickUp,
+				timeOrderPickUp,
 				orderItems,
 				totalCost,
-				timeOrderPickUp: formatTimeToString(pickUpDateTime),
-				dateOrderPlaced: formatDateToString(currentDate),
-				timeOrderPlaced: formatTimeToString(currentDate),
 			});
 
-			await newOrder.save();
+			// await newOrder.save();
 
-			orderDate.orders.push(newOrder._id);
-			orderDate.remainingOrders = newRemainingOrders;
-			await orderDate.save();
+			// orderDate.orders.push(newOrder._id);
+			// orderDate.remainingOrders = newRemainingOrders;
+			// await orderDate.save();
 
-			// TODO email to owner and client
+			const orderItemMsg = emailFormat.formatOrderItems(orderItems);
+			const ownerMsg = {
+				to: process.env.OWNER_EMAIL,
+				from: process.env.OWNER_EMAIL,
+				templateId: process.env.TEMPLATE_ORDER_PLACED_TO_OWNER,
+				dynamicTemplateData: {
+					firstName,
+					lastName,
+					email,
+					phone,
+					allergy,
+					dateOrderPlacedFull,
+					timeOrderPlaced,
+					dateOrderPickUp,
+					dateOrderPickUpFull,
+					timeOrderPickUp,
+					totalCost,
+					_id: newOrder._id,
+					orderItems: orderItemMsg,
+				},
+			};
+			const clientMsg = {
+				to: email,
+				from: process.env.OWNER_EMAIL,
+				templateId: process.env.TEMPLATE_ORDER_PLACED_TO_CLIENT,
+				dynamicTemplateData: {
+					firstName,
+					lastName,
+					email,
+					dateOrderPlacedFull,
+					timeOrderPlaced,
+					dateOrderPickUp,
+					dateOrderPickUpFull,
+					timeOrderPickUp,
+					totalCost,
+					_id: newOrder._id,
+					allergy: allergy || 'None',
+					orderItems: orderItemMsg,
+					site: process.env.SITE_EMAIL,
+				},
+			};
+
+			await sgMail.send(ownerMsg);
+			// await sgMail.send(clientMsg);
 
 			return res.json({ success: true });
 		} catch (error) {
@@ -373,18 +425,17 @@ module.exports.putChangeOrderStatus = [
 			].includes(status)
 		)
 		.withMessage('Invalid order status'),
-	body('message')
+	body('cancelMessage')
 		.trim()
-		.custom((message, { req }) => {
-			if (req.status === 'Cancelled' && !message) return false;
+		.custom((msg, { req }) => {
+			if (req.status === 'Cancelled' && !msg) return false;
 
 			return true;
 		})
 		.withMessage('Cancelled order needs reason for cancellation to client'),
 	async (req, res, next) => {
 		const formErrors = validationResult(req);
-		// TODO add message to destructuring
-		const { status } = req.body;
+		const { status, cancelMessage } = req.body;
 		const { orderId } = req.params;
 
 		if (!formErrors.isEmpty()) {
@@ -432,25 +483,15 @@ module.exports.putChangeOrderStatus = [
 					],
 				});
 			}
-			if (order.status === 'Cancelled') {
-				return res.status(400).json({
-					info: req.body,
-					errors: [
-						{
-							msg: 'cannot change status of cancelled order',
-							param: 'status',
-							value: status,
-						},
-					],
-				});
-			}
 			if (status === 'Cancelled') {
-				await addCancelledAmountBackToOrderDate(
+				await orderUtil.addCancelledAmountBackToOrderDate(
 					order.orderItems,
 					order.pickUpDateTime
 				);
 
 				// TODO send email to client on why order was cancelled
+			} else if (status === 'Approved, Waiting on Payment') {
+				// TODO send email to client that order was approved, waiting on payment
 			}
 
 			order.status = status;
@@ -507,11 +548,67 @@ module.exports.putCancelOrder = async (req, res, next) => {
 				],
 			});
 		}
-		// TODO check if date is before friday deadline
+		if (
+			!dateMethods.isOrderBeforeFridayDeadline(
+				currentDate,
+				order.dateOrderPickUp
+			)
+		) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						location: 'body',
+						msg: 'order has to be canceled by the Friday before by 6:00 pm',
+						param: 'order',
+						value: order.dateOrderPickUp,
+					},
+				],
+			});
+		}
 
-		await addCancelledAmountBackToOrderDate(order.orderItems, currentDate);
+		await orderUtil.addCancelledAmountBackToOrderDate(
+			order.orderItems,
+			order.dateOrderPickUp
+		);
 
-		// TODO send email to client on why order was cancelled
+		const {
+			_id,
+			firstName,
+			lastName,
+			email,
+			phone,
+			dateOrderPickUp,
+			timeOrderPickUp,
+			status,
+			orderItems,
+			totalCost,
+			paid,
+		} = order;
+
+		const cancelMsgToOwner = {
+			to: process.env.OWNER_EMAIL,
+			from: process.env.OWNER_EMAIL,
+			templateId: process.env.TEMPLATE_ORDER_CANCELLED_TO_OWNER,
+			dynamicTemplateData: {
+				_id,
+				firstName,
+				lastName,
+				email,
+				phone,
+				dateOrderPickUp,
+				timeOrderPickUp,
+				status,
+				totalCost,
+				paid,
+				dateOrderPickUpFull: dateMethods.formatDateToStringFull(
+					new Date(dateOrderPickUp)
+				),
+				orderItems: emailFormat.formatOrderItems(orderItems),
+			},
+		};
+
+		await sgMail.send(cancelMsgToOwner);
 
 		order.status = 'Cancelled';
 		await order.save();
@@ -521,7 +618,5 @@ module.exports.putCancelOrder = async (req, res, next) => {
 		return next(error);
 	}
 };
-
-module.exports.putAcceptOrder = () => {};
 
 module.exports.putChangeOrderInfo = () => {};
