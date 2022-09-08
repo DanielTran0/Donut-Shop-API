@@ -10,6 +10,7 @@ const addCancelledAmountBackToOrderDate = async (orderItems, date) => {
 	orderDate.remainingOrders += totalAmount;
 
 	await orderDate.save();
+	return orderDate.remainingOrders;
 };
 
 module.exports = { addCancelledAmountBackToOrderDate };

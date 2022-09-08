@@ -144,7 +144,6 @@ module.exports.postCreatedOrder = [
 		.withMessage('yyyy/MM/dd'),
 	body('timeOrderPickUpHour')
 		.trim()
-
 		.custom((value) => {
 			if (!value) return false;
 
@@ -157,7 +156,6 @@ module.exports.postCreatedOrder = [
 		.withMessage('time has to be between 12 to 16'),
 	body('timeOrderPickUpMinute')
 		.trim()
-
 		.custom((value, { req }) => {
 			if (!value) return false;
 
@@ -167,7 +165,7 @@ module.exports.postCreatedOrder = [
 			if (
 				Number.isNaN(min) ||
 				min < 0 ||
-				min > 60 ||
+				min > 59 ||
 				(hour === 16 && min !== 0)
 			)
 				return false;
@@ -327,13 +325,12 @@ module.exports.postCreatedOrder = [
 				});
 			}
 
-			const pickUpDateTime = new Date(dateOrderPickUp);
-			pickUpDateTime.setHours(timeOrderPickUpHour);
-			pickUpDateTime.setMinutes(timeOrderPickUpMinute);
-
 			const dateOrderPickUpFull = dateMethods.formatDateToStringFull(
 				new Date(dateOrderPickUp)
 			);
+			const pickUpDateTime = new Date(dateOrderPickUp);
+			pickUpDateTime.setHours(timeOrderPickUpHour);
+			pickUpDateTime.setMinutes(timeOrderPickUpMinute);
 			const timeOrderPickUp = dateMethods.formatTimeToString(pickUpDateTime);
 			const dateOrderPlaced = dateMethods.formatDateToString(currentDate);
 			const dateOrderPlacedFull =
@@ -354,55 +351,43 @@ module.exports.postCreatedOrder = [
 				totalCost,
 			});
 
-			// await newOrder.save();
+			await newOrder.save();
 
-			// orderDate.orders.push(newOrder._id);
-			// orderDate.remainingOrders = newRemainingOrders;
-			// await orderDate.save();
+			orderDate.orders.push(newOrder._id);
+			orderDate.remainingOrders = newRemainingOrders;
+			await orderDate.save();
 
 			const orderItemMsg = emailFormat.formatOrderItems(orderItems);
+			const dynamicTemplateData = {
+				firstName,
+				lastName,
+				email,
+				phone,
+				dateOrderPlacedFull,
+				timeOrderPlaced,
+				dateOrderPickUp,
+				dateOrderPickUpFull,
+				timeOrderPickUp,
+				totalCost,
+				_id: newOrder._id,
+				allergy: allergy || 'None',
+				orderItems: orderItemMsg,
+			};
+
 			const ownerMsg = {
 				to: process.env.OWNER_EMAIL,
 				from: process.env.OWNER_EMAIL,
 				templateId: process.env.TEMPLATE_ORDER_PLACED_TO_OWNER,
-				dynamicTemplateData: {
-					firstName,
-					lastName,
-					email,
-					phone,
-					allergy,
-					dateOrderPlacedFull,
-					timeOrderPlaced,
-					dateOrderPickUp,
-					dateOrderPickUpFull,
-					timeOrderPickUp,
-					totalCost,
-					_id: newOrder._id,
-					orderItems: orderItemMsg,
-				},
+				dynamicTemplateData,
 			};
 			const clientMsg = {
 				to: email,
 				from: process.env.OWNER_EMAIL,
 				templateId: process.env.TEMPLATE_ORDER_PLACED_TO_CLIENT,
-				dynamicTemplateData: {
-					firstName,
-					lastName,
-					email,
-					dateOrderPlacedFull,
-					timeOrderPlaced,
-					dateOrderPickUp,
-					dateOrderPickUpFull,
-					timeOrderPickUp,
-					totalCost,
-					_id: newOrder._id,
-					allergy: allergy || 'None',
-					orderItems: orderItemMsg,
-					site: process.env.SITE_EMAIL,
-				},
+				dynamicTemplateData,
 			};
 
-			await sgMail.send(ownerMsg);
+			// await sgMail.send(ownerMsg);
 			// await sgMail.send(clientMsg);
 
 			return res.json({ success: true });
@@ -437,7 +422,7 @@ module.exports.putChangeOrderStatus = [
 		const formErrors = validationResult(req);
 		const { status, cancelMessage } = req.body;
 		const { orderId } = req.params;
-
+		// TODO if status is approved and paid set paid to true
 		if (!formErrors.isEmpty()) {
 			return res
 				.status(400)
@@ -488,6 +473,43 @@ module.exports.putChangeOrderStatus = [
 					order.orderItems,
 					order.pickUpDateTime
 				);
+
+				// const {
+				// 	_id,
+				// 	firstName,
+				// 	lastName,
+				// 	email,
+				// 	phone,
+				// 	dateOrderPickUp,
+				// 	timeOrderPickUp,
+				// 	dateOrderPlaced,
+				// 	timeOrderPlaced,
+				// 	orderItems,
+				// 	totalCost,
+				// 	paid,
+				// } = order;
+
+				// const dateOrderPickUpFull = dateMethods.formatDateToStringFull(
+				// 	new Date(dateOrderPickUp)
+				// );
+				// const dateOrderPlacedFull =
+				// 	dateMethods.formatDateToStringFull(dateOrderPlaced);
+
+				// const dynamicTemplateData = {
+				// 	_id,
+				// 	firstName,
+				// 	lastName,
+				// 	email,
+				// 	phone,
+				// 	dateOrderPlacedFull,
+				// 	timeOrderPlaced,
+				// 	dateOrderPickUp,
+				// 	dateOrderPickUpFull,
+				// 	timeOrderPickUp,
+				// 	totalCost,
+				// 	allergy: allergy || 'None',
+				// 	orderItems: orderItemMsg,
+				// };
 
 				// TODO send email to client on why order was cancelled
 			} else if (status === 'Approved, Waiting on Payment') {
@@ -604,6 +626,10 @@ module.exports.putCancelOrder = async (req, res, next) => {
 				dateOrderPickUpFull: dateMethods.formatDateToStringFull(
 					new Date(dateOrderPickUp)
 				),
+				dateCancelled: dateMethods.formatDateToStringFull(
+					new Date(currentDate)
+				),
+				timeCancelled: dateMethods.formatTimeToString(currentDate),
 				orderItems: emailFormat.formatOrderItems(orderItems),
 			},
 		};
@@ -611,7 +637,7 @@ module.exports.putCancelOrder = async (req, res, next) => {
 		await sgMail.send(cancelMsgToOwner);
 
 		order.status = 'Cancelled';
-		await order.save();
+		// await order.save();
 
 		return res.json({ success: true });
 	} catch (error) {
@@ -619,4 +645,227 @@ module.exports.putCancelOrder = async (req, res, next) => {
 	}
 };
 
-module.exports.putChangeOrderInfo = () => {};
+module.exports.putChangeOrderInfo = [
+	body('firstName').trim().optional({ checkFalsy: true }),
+	body('lastName').trim().optional({ checkFalsy: true }),
+	body('email')
+		.trim()
+		.isEmail()
+		.normalizeEmail()
+		.optional({ checkFalsy: true }),
+	body('phone').trim().isMobilePhone('en-CA').optional({ checkFalsy: true }),
+	body('note').trim().optional({ checkFalsy: true }),
+	body('allergy').trim().optional({ checkFalsy: true }),
+	body('dateOrderPickUp')
+		.trim()
+		.custom((value) => {
+			if (!value) return true;
+
+			return /^\d{4}\/\d{2}\/\d{2}$/.test(value);
+		})
+		.withMessage('yyyy/MM/dd'),
+	body('timeOrderPickUpHour')
+		.trim()
+		.custom((value) => {
+			if (!value) return true;
+
+			const hour = parseInt(value, 10);
+
+			if (Number.isNaN(hour) || hour < 0 || hour > 23) return false;
+
+			return true;
+		})
+		.withMessage('pick hour between 0 - 23'),
+	body('timeOrderPickUpMinute')
+		.trim()
+		.custom((value) => {
+			if (!value) return true;
+
+			const min = parseInt(value, 10);
+
+			if (Number.isNaN(min) || min < 0 || min > 59) return false;
+
+			return true;
+		})
+		.withMessage('pick minute between 0 - 59'),
+	body('paid')
+		.trim()
+		.custom((value) => {
+			if (!value) return true;
+
+			return ['true', 'false'].includes(value);
+		})
+		.withMessage('true or false'),
+	async (req, res, next) => {
+		const formErrors = validationResult(req);
+		const currentDate = new Date();
+		const {
+			firstName,
+			lastName,
+			email,
+			phone,
+			note,
+			allergy,
+			dateOrderPickUp,
+			timeOrderPickUpHour,
+			timeOrderPickUpMinute,
+			paid,
+		} = req.body;
+		const { orderId } = req.params;
+
+		if (!formErrors.isEmpty()) {
+			return res
+				.status(400)
+				.json({ info: req.body, errors: formErrors.array() });
+		}
+		if (!isValidObjectId(orderId)) {
+			return res.status(400).json({
+				info: req.body,
+				errors: [
+					{
+						msg: 'invalid order id',
+						param: 'orderId',
+						value: orderId,
+					},
+				],
+			});
+		}
+
+		try {
+			const order = await Order.findById(orderId);
+			const orderDate = await OrderDate.findOne({ date: dateOrderPickUp });
+
+			if (!order) {
+				return res.status(400).json({
+					info: req.body,
+					errors: [
+						{
+							msg: 'order does not exist',
+							param: 'orderId',
+							value: orderId,
+						},
+					],
+				});
+			}
+
+			if (dateOrderPickUp) {
+				if (dateOrderPickUp === order.dateOrderPickUp) {
+					return res.status(400).json({
+						info: req.body,
+						errors: [
+							{
+								location: 'body',
+								msg: 'this date is currently the order date',
+								param: 'dateOrderPickUp',
+								value: dateOrderPickUp,
+							},
+						],
+					});
+				}
+				if (!orderDate || orderDate?.dayOff) {
+					return res.status(400).json({
+						info: req.body,
+						errors: [
+							{
+								location: 'body',
+								msg: !orderDate
+									? 'orders for weekend only'
+									: 'day is closed for orders',
+								param: 'dateOrderPickUp',
+								value: dateOrderPickUp,
+							},
+						],
+					});
+				}
+				if (!dateMethods.isOrderDateIn3WeekRange(dateOrderPickUp)) {
+					return res.status(400).json({
+						info: req.body,
+						errors: [
+							{
+								location: 'body',
+								msg: 'order date has to be within 3 week range',
+								param: 'dateOrderPickUp',
+								value: dateOrderPickUp,
+							},
+						],
+					});
+				}
+				if (
+					!dateMethods.isOrderBeforeFridayDeadline(currentDate, dateOrderPickUp)
+				) {
+					return res.status(400).json({
+						info: req.body,
+						errors: [
+							{
+								location: 'body',
+								msg: 'order has to be placed by Friday 6:00 pm',
+								param: 'dateOrderPickUp',
+								value: dateOrderPickUp,
+							},
+						],
+					});
+				}
+
+				const { totalAmount } =
+					orderValidationMethods.calculateAmountAndCostOfOrderItems(
+						order.orderItems
+					);
+				const newRemainingOrders = orderDate.remainingOrders - totalAmount;
+
+				if (newRemainingOrders < 0) {
+					return res.status(400).json({
+						info: req.body,
+						errors: [
+							{
+								location: 'body',
+								msg: 'order amount will exceed our daily order limit',
+								param: 'orderItems',
+								value: order.orderItems,
+							},
+						],
+					});
+				}
+
+				const previousOrderDate = await OrderDate.findOne({
+					date: order.dateOrderPickUp,
+				});
+
+				await orderUtil.addCancelledAmountBackToOrderDate(
+					order.orderItems,
+					previousOrderDate.date
+				);
+
+				previousOrderDate.orders = previousOrderDate.orders.filter(
+					(id) => toString(id) !== toString(order._id)
+				);
+
+				await previousOrderDate.save();
+
+				orderDate.orders.push(order._id);
+				orderDate.remainingOrders = newRemainingOrders;
+				await orderDate.save();
+			}
+
+			const pickUpDateTime = new Date(currentDate);
+			pickUpDateTime.setHours(timeOrderPickUpHour);
+			pickUpDateTime.setMinutes(timeOrderPickUpMinute);
+			const timeOrderPickUp = dateMethods.formatTimeToString(pickUpDateTime);
+
+			await Order.findByIdAndUpdate(orderId, {
+				firstName: firstName || order.firstName,
+				lastName: lastName || order.lastName,
+				email: email || order.email,
+				phone: phone || order.phone,
+				note: note || order.note,
+				allergy: allergy || order.allergy,
+				dateOrderPickUp: dateOrderPickUp || order.dateOrderPickUp,
+				timeOrderPickUp: timeOrderPickUp || order.timeOrderPickUp,
+				paid: paid || order.paid,
+			});
+
+			return res.json({ success: true });
+		} catch (error) {
+			return next(error);
+		}
+	},
+];
