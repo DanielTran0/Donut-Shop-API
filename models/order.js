@@ -12,6 +12,8 @@ const orderSchema = new Schema({
 	timeOrderPlaced: { type: String, required: true },
 	dateOrderPickUp: { type: String, required: true },
 	timeOrderPickUp: { type: String, required: true },
+	cancelDate: { type: String, default: '' },
+	cancelTime: { type: String, default: '' },
 	status: {
 		type: String,
 		enum: [

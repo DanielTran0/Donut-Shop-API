@@ -20,6 +20,6 @@ router.put(
 	authenticateRoute,
 	orderController.putChangeOrderInfo
 );
-router.put('/cancel/:orderId', orderController.putCancelOrder);
+router.put('/cancel/:orderId', orderController.putClientCancelOrder);
 
 module.exports = router;
